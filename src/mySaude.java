@@ -46,13 +46,29 @@ public class mySaude {
             	flags.put(currentFlag, flags.get(currentFlag) + ";" + arg);
             }
         }
+
+        client.startClient();
         
         // Flags
         for (String key : flags.keySet()) {
             switch (key) {
                 // 1. Flags de Conexão e Identificação
                 case "-s":
-                    System.out.println("-s: Define o endereço IP e o porto do servidor.");
+                    System.out.println("Servidor>-s: A definir o endereço IP e o porto do servidor.");
+                    try {
+                        int port = Integer.parseInt(args[0]);
+
+                        if (port < 1 || port > 65535) {
+                            System.out.println("Invalid port! Must be 1-65535.");
+                            return;
+                        }
+
+                        client.port = port;
+
+                    } catch (NumberFormatException e) {
+                        System.out.println("Port must be a number!");
+                        return;
+                    }
                     break;
                 case "-u":
                     System.out.println("-u: Identifica o utilizador que executa o comando.");
@@ -115,22 +131,8 @@ public class mySaude {
 
         System.out.println(flags);
  
-        try {
-            int port = Integer.parseInt(args[0]);
+       
 
-            if (port < 1 || port > 65535) {
-                System.out.println("Invalid port! Must be 1-65535.");
-                return;
-            }
-
-            client.port = port;
-
-        } catch (NumberFormatException e) {
-            System.out.println("Port must be a number!");
-            return;
-        }
-
-        client.startClient();
     }
 
     public void startClient() {
