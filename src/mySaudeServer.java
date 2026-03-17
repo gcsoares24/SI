@@ -119,29 +119,30 @@ public class mySaudeServer{
 	        try {
 	            DataInputStream dataIn = new DataInputStream(socket.getInputStream());
 
-	            // Read number of files
+	            // Number of files to receive
 	            int numFiles = dataIn.readInt();
 	            System.out.println("Receiving " + numFiles + " file(s).");
 
 	            for (int i = 0; i < numFiles; i++) {
-	                // Read file name and length
+	                // Read file name and size from the client
 	                String fileName = dataIn.readUTF();
 	                long fileSize = dataIn.readLong();
-
 	                byte[] buffer = new byte[8192];
 	                int read;
 	                long remaining = fileSize;
 
-	                java.io.File file = new java.io.File(destFolder, fileName);
-	                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(file)) {
+	                // Destination path as string
+	                String destPath = destFolder + "/" + fileName;
+
+	                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(destPath)) {
 	                    while (remaining > 0 &&
-	                           (read = dataIn.read(buffer, 0, (int)Math.min(buffer.length, remaining))) != -1) {
+	                           (read = dataIn.read(buffer, 0, (int) Math.min(buffer.length, remaining))) != -1) {
 	                        fos.write(buffer, 0, read);
 	                        remaining -= read;
 	                    }
 	                }
 
-	                System.out.println("Received file: " + fileName + " (" + fileSize + " bytes)");
+	                System.out.println("File received (" + fileSize + " bytes) at " + destPath);
 	            }
 
 	        } catch (IOException e) {
@@ -150,3 +151,5 @@ public class mySaudeServer{
 	    }
 	}
 }
+
+and here?
