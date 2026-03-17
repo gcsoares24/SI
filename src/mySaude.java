@@ -32,40 +32,21 @@ public class mySaude {
         
         Map<String, String> flags = new HashMap<>();
         
-        boolean readingFiles = false;
-        String currentFileFlag = "";
+        boolean inFlag = false;
+        String currentFlag = "";
 
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
 
-            if (readingFiles) {
-                // enquanto não encontramos outra flag, adiciona ao valor da flag
-                if (arg.startsWith("-")) {
-                    readingFiles = false; // parámos de ler ficheiros
-                    i--; // retrocede para tratar a flag
-                } else {
-                    // acrescenta ficheiro à flag atual
-                    String prev = flags.get(currentFileFlag);
-                    if (prev.isEmpty()) prev = arg;
-                    else prev += ";" + arg;
-                    flags.put(currentFileFlag, prev);
-                    continue;
-                }
-            }
-
             if (arg.startsWith("-")) {
-                if (arg.equals("-e") || arg.equals("-r")) {
-                    readingFiles = true;
-                    currentFileFlag = arg;
-                    flags.put(currentFileFlag, "");
-                } else if (i + 1 < args.length && !args[i + 1].startsWith("-")) {
-                    flags.put(arg, args[i + 1]);
-                    i++;
-                } else {
-                    flags.put(arg, "true");
-                }
+            	currentFlag = arg;
+            	flags.put(arg, args[i + 1]);
+                i++;
+            }else {
+            	flags.put(currentFlag, flags.get(currentFlag) + ";" + arg);
             }
         }
+        
         // Flags
         for (String key : flags.keySet()) {
             switch (key) {
