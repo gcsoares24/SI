@@ -31,14 +31,104 @@ public class mySaude {
         mySaude client = new mySaude();
         
         Map<String, String> flags = new HashMap<>();
+        
+        boolean readingFiles = false;
+        String currentFileFlag = "";
+
         for (int i = 0; i < args.length; i++) {
-            if (args[i].startsWith("-")) {
-                if (i + 1 < args.length && !args[i + 1].startsWith("-")) {
-                    flags.put(args[i], args[i + 1]);
+            String arg = args[i];
+
+            if (readingFiles) {
+                // enquanto não encontramos outra flag, adiciona ao valor da flag
+                if (arg.startsWith("-")) {
+                    readingFiles = false; // parámos de ler ficheiros
+                    i--; // retrocede para tratar a flag
+                } else {
+                    // acrescenta ficheiro à flag atual
+                    String prev = flags.get(currentFileFlag);
+                    if (prev.isEmpty()) prev = arg;
+                    else prev += ";" + arg;
+                    flags.put(currentFileFlag, prev);
+                    continue;
+                }
+            }
+
+            if (arg.startsWith("-")) {
+                if (arg.equals("-e") || arg.equals("-r")) {
+                    readingFiles = true;
+                    currentFileFlag = arg;
+                    flags.put(currentFileFlag, "");
+                } else if (i + 1 < args.length && !args[i + 1].startsWith("-")) {
+                    flags.put(arg, args[i + 1]);
                     i++;
                 } else {
-                    flags.put(args[i], "true");
+                    flags.put(arg, "true");
                 }
+            }
+        }
+        // Flags
+        for (String key : flags.keySet()) {
+            switch (key) {
+                // 1. Flags de Conexão e Identificação
+                case "-s":
+                    System.out.println("-s: Define o endereço IP e o porto do servidor.");
+                    break;
+                case "-u":
+                    System.out.println("-u: Identifica o utilizador que executa o comando.");
+                    break;
+                case "-p":
+                    System.out.println("-p: Password para aceder à keystore local do utilizador.");
+                    break;
+                case "-t":
+                    System.out.println("-t: Define o destinatário ou o autor da operação.");
+                    break;
+
+                // 2A. Transferência de Ficheiros
+                case "-e":
+                    System.out.println("-e: Envia ficheiros para o servidor.");
+                    break;
+                case "-r":
+                    System.out.println("-r: Recebe ficheiros do servidor.");
+                    break;
+
+                // 2B. Criptografia
+                case "-c":
+                    System.out.println("-c: Cifra ficheiros localmente (AES + RSA).");
+                    break;
+                case "-d":
+                    System.out.println("-d: Decifra ficheiros usando a chave local.");
+                    break;
+
+                // 2C. Assinatura Digital
+                case "-a":
+                    System.out.println("-a: Assina ficheiros localmente.");
+                    break;
+                case "-v":
+                    System.out.println("-v: Valida a assinatura de ficheiros.");
+                    break;
+
+                // 2D. Operações Combinadas
+                case "-ce":
+                    System.out.println("-ce: Cifra e envia ficheiros para o servidor.");
+                    break;
+                case "-rd":
+                    System.out.println("-rd: Recebe e decifra ficheiros do servidor.");
+                    break;
+                case "-ae":
+                    System.out.println("-ae: Assina e envia ficheiros.");
+                    break;
+                case "-rv":
+                    System.out.println("-rv: Recebe ficheiros e valida assinatura.");
+                    break;
+                case "-ace":
+                    System.out.println("-ace: Assina, cifra e envia ficheiros (Envelope Seguro).");
+                    break;
+                case "-rdv":
+                    System.out.println("-rdv: Recebe, decifra e valida assinatura de ficheiros.");
+                    break;
+
+                default:
+                    System.out.println("Unknown flag: " + key);
             }
         }
 

@@ -25,7 +25,7 @@ public class mySaudeServer{
 		System.out.println("servidor: main");
 		mySaudeServer server = new mySaudeServer();
 		 if (args.length < 1) {
-		        System.out.println("Usage: java mySaude <port>");
+		        System.out.println("Usage: java mySaudeServe <port>");
 		        return;
 		    }
 
