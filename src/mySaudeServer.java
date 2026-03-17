@@ -87,42 +87,64 @@ public class mySaudeServer{
 	            ObjectOutputStream outStream = new ObjectOutputStream(socket.getOutputStream());
 	            ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream());
 
-	            String user = (String) inStream.readObject();
-	            String passwd = (String) inStream.readObject();
-
-	            System.out.println("User: " + user + ", Pass: " + passwd);
-
-	            boolean loginOk = user.equals("guigui") && passwd.equals("eueu");
-	            outStream.writeObject(loginOk);
-	            outStream.flush();
-
-	            if (loginOk) {
-	                // --- PDF transfer ---
-	                DataInputStream dataIn = new DataInputStream(socket.getInputStream());
-
-	                long fileSize = dataIn.readLong();
-	                byte[] buffer = new byte[8192];
-	                int read;
-	                long remaining = fileSize;
-
-	                java.io.FileOutputStream fos = new java.io.FileOutputStream("../pdfs/received.pdf");
-
-	                while (remaining > 0 &&
-	                       (read = dataIn.read(buffer, 0, (int) Math.min(buffer.length, remaining))) != -1) {
-	                    fos.write(buffer, 0, read);
-	                    remaining -= read;
-	                }
-
-	                fos.close();
-	                System.out.println("PDF received (" + fileSize + " bytes)");
-	            }
+	            // --- LOGIN ---
+//	            String user = (String) inStream.readObject();
+//	            String passwd = (String) inStream.readObject();
+//
+//	            System.out.println("User: " + user + ", Pass: " + passwd);
+//
+//	            boolean loginOk = user.equals("guigui") && passwd.equals("eueu");
+//	            outStream.writeObject(loginOk);
+//	            outStream.flush();
+//
+//	            if (loginOk) {
+//	                // Call a method to receive a file
+//	                receiveFile(socket, "../pdfs/received.pdf");
+//	            } else {
+//	                System.out.println("Login falhou para o usuário: " + user);
+//	            }
+	            receiveFiles(socket, "../pdfs/");
 
 	            // --- cleanup ---
 	            inStream.close();
 	            outStream.close();
 	            socket.close();
 
-	        } catch (IOException | ClassNotFoundException e) {
+	        } catch (IOException e) {
+	            e.printStackTrace();
+	        }
+	    }
+
+	    private void receiveFiles(Socket socket, String destFolder) {
+	        try {
+	            DataInputStream dataIn = new DataInputStream(socket.getInputStream());
+
+	            // Read number of files
+	            int numFiles = dataIn.readInt();
+	            System.out.println("Receiving " + numFiles + " file(s).");
+
+	            for (int i = 0; i < numFiles; i++) {
+	                // Read file name and length
+	                String fileName = dataIn.readUTF();
+	                long fileSize = dataIn.readLong();
+
+	                byte[] buffer = new byte[8192];
+	                int read;
+	                long remaining = fileSize;
+
+	                java.io.File file = new java.io.File(destFolder, fileName);
+	                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(file)) {
+	                    while (remaining > 0 &&
+	                           (read = dataIn.read(buffer, 0, (int)Math.min(buffer.length, remaining))) != -1) {
+	                        fos.write(buffer, 0, read);
+	                        remaining -= read;
+	                    }
+	                }
+
+	                System.out.println("Received file: " + fileName + " (" + fileSize + " bytes)");
+	            }
+
+	        } catch (IOException e) {
 	            e.printStackTrace();
 	        }
 	    }

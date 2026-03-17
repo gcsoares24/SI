@@ -17,6 +17,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.ConnectException;
 import java.net.Socket;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -39,11 +40,13 @@ public class mySaude {
 	    }
 	    return fallback;
 	}
-	
+	public Socket sock;
+    public ObjectOutputStream objOut;
+    public ObjectInputStream objIn;
 	
 	
 	public static mySaude client = new mySaude();
-	
+		
     public static void main(String[] args) throws IllegalArgumentException{
 
         try {
@@ -60,23 +63,26 @@ public class mySaude {
                 throw new IllegalArgumentException("There is no option");
             }
             
-            switchCase(option);
+            
+            
+            switchCase(option, flags.get(option));
 	
 	        System.out.println(flags);
 	 
-	    }catch(IllegalArgumentException e){
+	    }catch(Exception e){
 	        	System.out.println("\n\nIt seems like your option has an error:\n\n" + e.getMessage());
 	        	return;
 	     }
 
     }
     
-    private static void switchCase(String option) {
+    private static void switchCase(String option, String value) {
     	switch (option) {
 	
 	        // 2A. Transferência de Ficheiros
 	        case "-e":
 	            System.out.println("-e: Envia ficheiros para o servidor.");
+	            client.sendFiles(value);
 	            break;
 	        case "-r":
 	            System.out.println("-r: Recebe ficheiros do servidor.");
@@ -155,7 +161,7 @@ public class mySaude {
 	    return flags;
 	}
 	
-	public static String inicialize(Map<String, String> flags) {
+	public static String inicialize(Map<String, String> flags) throws ConnectException {
         String option = null;
         for (String key : flags.keySet()) {
         	if(option != null) {
@@ -183,82 +189,85 @@ public class mySaude {
 		return option;
 	}
 
-    public void startClient(String[] address) {
-    	System.out.println("Servidor>-s: A definir o endereço IP e o porto do servidor.");
-    	int port = 1024; //default
-        String ip = "localhost"; //default
-        try {
+	public void startClient(String[] address) throws ConnectException {
+	    System.out.println("Servidor>-s: A definir o endereço IP e o porto do servidor.");
 
-            ip = address[0];
-            port = Integer.parseInt(address[1]);
+	    int port = 1024; // default
+	    String ip = "localhost"; // default
 
-            if (port < 1 || port > 65535) {
-                System.out.println("Invalid port! Must be 1-65535.");
-                return;
-            }
+	    try {
+	        ip = address[0];
+	        port = Integer.parseInt(address[1]);
 
+	        if (port < 1 || port > 65535) {
+	            System.out.println("Invalid port! Must be 1-65535.");
+	            return;
+	        }
 
-        } catch (NumberFormatException e) {
-            System.out.println("Port must be a number!");
-            return;
-        }
-        Socket soc = null;
+	    } catch (NumberFormatException e) {
+	        System.out.println("Port must be a number!");
+	        return;
+	    }
 
-        try {
-            soc = new Socket("localhost", port);
+	    try {
+	        // Only create socket and object streams here
+	        client.sock = new Socket(ip, port);
+	        client.objOut = new ObjectOutputStream(client.sock.getOutputStream());
+	        client.objIn = new ObjectInputStream(client.sock.getInputStream());
 
-            ObjectOutputStream outStream = new ObjectOutputStream(soc.getOutputStream());
-            ObjectInputStream inStream = new ObjectInputStream(soc.getInputStream());
+	        System.out.println("Connected to server at " + ip + ":" + port);
 
-            Scanner sc = new Scanner(System.in);
+	    } catch (ConnectException e) {
+	        throw new ConnectException("\tConnection refused. Make sure the mySaudeServer is running at the specified address and port.");
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	    }
+	}
+	
+	
+	public void sendFiles(String filePaths) {
+	    if (client.sock == null || client.objOut == null) {
+	        System.out.println("Socket is not connected. Call startClient first.");
+	        return;
+	    }
 
-            System.out.print("Username: ");
-            String user = sc.nextLine();
+	    // Split the paths by some delimiter (e.g., ";" or ",")
+	    String[] files = filePaths.split(";"); // adjust delimiter as needed
 
-            System.out.print("Password: ");
-            String passwd = sc.nextLine();
+	    try {
+	        DataOutputStream dataOut = new DataOutputStream(client.sock.getOutputStream());
 
-            //Send user and pass
-            outStream.writeObject(user);
-            outStream.writeObject(passwd);
-            outStream.flush();
+	        // First, send the number of files
+	        dataOut.writeInt(files.length);
 
-            // receive the response
-            Boolean response = (Boolean) inStream.readObject();
+	        for (String path : files) {
+	            File file = new File(path.trim());
+	            if (!file.exists()) {
+	                System.out.println("File does not exist: " + path);
+	                continue;
+	            }
 
-            if (response) {
-                System.out.println("Login aceite.");
-            } else {
-                System.out.println("Login rejeitado.");
-            }
-         // After login success
+	            // Send file name length and name
+	            dataOut.writeUTF(file.getName());
 
-            DataOutputStream dataOut =
-                    new DataOutputStream(soc.getOutputStream());
+	            // Send file length
+	            dataOut.writeLong(file.length());
 
-            File file = new File("../pdfs/enviar.pdf");
-            FileInputStream fis = new FileInputStream(file);
+	            // Send file content
+	            FileInputStream fis = new FileInputStream(file);
+	            byte[] buffer = new byte[8192];
+	            int read;
+	            while ((read = fis.read(buffer)) > 0) {
+	                dataOut.write(buffer, 0, read);
+	            }
+	            fis.close();
 
-            dataOut.writeLong(file.length());
+	            System.out.println("File sent successfully: " + path);
+	        }
 
-            byte[] buffer = new byte[8192];
-            int read;
-
-            while ((read = fis.read(buffer)) > 0) {
-                dataOut.write(buffer, 0, read);
-            }
-
-            dataOut.flush();
-            fis.close();
-            
-
-            outStream.close();
-            inStream.close();
-            soc.close();
-            sc.close();
-
-        } catch (IOException | ClassNotFoundException e) {
-            e.printStackTrace();
-        }
-    }
+	        dataOut.flush();
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	    }
+	}
 }
