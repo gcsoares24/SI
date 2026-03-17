@@ -22,9 +22,32 @@ import java.util.Scanner;
 
 public class mySaude {
 
+	private int port;
+
     public static void main(String[] args) {
         System.out.println("cliente: main");
         mySaude client = new mySaude();
+        
+        if (args.length < 1) {
+            System.out.println("Usage: java mySaude <port>");
+            return;
+        }
+
+        try {
+            int port = Integer.parseInt(args[0]);
+
+            if (port < 1 || port > 65535) {
+                System.out.println("Invalid port! Must be 1-65535.");
+                return;
+            }
+
+            client.port = port;
+
+        } catch (NumberFormatException e) {
+            System.out.println("Port must be a number!");
+            return;
+        }
+
         client.startClient();
     }
 
@@ -32,7 +55,7 @@ public class mySaude {
         Socket soc = null;
 
         try {
-            soc = new Socket("localhost", 23456);
+            soc = new Socket("localhost", port);
 
             ObjectOutputStream outStream = new ObjectOutputStream(soc.getOutputStream());
             ObjectInputStream inStream = new ObjectInputStream(soc.getInputStream());

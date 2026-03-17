@@ -19,17 +19,39 @@ import java.net.Socket;
 
 public class mySaudeServer{
 
+	private int port;
+	
 	public static void main(String[] args) throws IOException {
 		System.out.println("servidor: main");
 		mySaudeServer server = new mySaudeServer();
-		server.startServer();
+		 if (args.length < 1) {
+		        System.out.println("Usage: java mySaude <port>");
+		        return;
+		    }
+
+		    try {
+		        int port = Integer.parseInt(args[0]);
+
+		        if (port < 1 || port > 65535) {
+		            System.out.println("Invalid port! Must be 1-65535.");
+		            return;
+		        }
+
+		        server.port = port;
+
+		    } catch (NumberFormatException e) {
+		        System.out.println("Port must be a number!");
+		        return;
+		    }
+
+		    server.startServer();
 	}
 
 	public void startServer () throws IOException{
 		ServerSocket sSoc = null;
         
 		try {
-			sSoc = new ServerSocket(23456);
+			sSoc = new ServerSocket(port);
 		} catch (IOException e) {
 			System.err.println(e.getMessage());
 			System.exit(-1);
