@@ -19,56 +19,76 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Scanner;
 
 public class mySaude {
 
-	private int port;
+	public static String isCommand(String currentFlag, String command) {
 
-    public static void main(String[] args) {
+        if (currentFlag.equals("-e") || currentFlag.equals("-r") ||
+                currentFlag.equals("-c") || currentFlag.equals("-d") ||
+                currentFlag.equals("-ce") || currentFlag.equals("-rd") ||
+                currentFlag.equals("-a") || currentFlag.equals("-v") ||
+                currentFlag.equals("-ae") || currentFlag.equals("-rv") ||
+                currentFlag.equals("-ace") || currentFlag.equals("-rdv")) {
+
+    		return currentFlag;
+        }
+		return command;
+	}
+	
+	public static Map<String, String> argsMapping(String[] args) throws IllegalArgumentException {
+	    Map<String, String> flags = new LinkedHashMap<>();
+	    String currentFlag = "";
+	    String commandKey = "";
+
+	    for (int i = 0; i < args.length; i++) {
+	        String arg = args[i];
+
+	        if (arg.startsWith("-")) {
+	            currentFlag = arg;
+	            
+	            if(i + 1 >= args.length) {
+	                throw new IllegalArgumentException("There is an empty flag: " + arg);
+	            }
+	            
+	            if (args[i + 1].startsWith("-")) {
+	                throw new IllegalArgumentException("Can't put 2 flags in a row: " + currentFlag + " and " + args[i + 1]);
+	            }
+
+	            flags.put(currentFlag, args[i + 1]);
+
+	            commandKey = isCommand(currentFlag, commandKey);
+
+	            i++; // skip value
+	        } else {
+	            flags.put(currentFlag, flags.get(currentFlag) + ";" + arg);
+	        }
+	    }
+
+	    return flags;
+	}
+	
+    public static void main(String[] args) throws IllegalArgumentException{
         System.out.println("cliente> A iniciar...");
         mySaude client = new mySaude();
-        
-        Map<String, String> flags = new HashMap<>();
-        
-        boolean inFlag = false;
-        String currentFlag = "";
-
-        for (int i = 0; i < args.length; i++) {
-            String arg = args[i];
-
-            if (arg.startsWith("-")) {
-            	currentFlag = arg;
-            	flags.put(arg, args[i + 1]);
-                i++;
-            }else {
-            	flags.put(currentFlag, flags.get(currentFlag) + ";" + arg);
-            }
+        Map<String, String> flags = new LinkedHashMap<>();
+        try {
+             flags = argsMapping(args);	
+        } catch(IllegalArgumentException e){
+        	System.out.println("\n\nIt seems like your command has an error:\n\n" + e.getMessage());
+        	return;
         }
-
-        client.startClient();
-        
+        System.out.print(flags);
         // Flags
         for (String key : flags.keySet()) {
             switch (key) {
                 // 1. Flags de Conexão e Identificação
                 case "-s":
-                    System.out.println("Servidor>-s: A definir o endereço IP e o porto do servidor.");
-                    try {
-                        int port = Integer.parseInt(args[0]);
 
-                        if (port < 1 || port > 65535) {
-                            System.out.println("Invalid port! Must be 1-65535.");
-                            return;
-                        }
-
-                        client.port = port;
-
-                    } catch (NumberFormatException e) {
-                        System.out.println("Port must be a number!");
-                        return;
-                    }
+                    client.startClient(flags.get("-s").split(":"));
                     break;
                 case "-u":
                     System.out.println("-u: Identifica o utilizador que executa o comando.");
@@ -135,7 +155,25 @@ public class mySaude {
 
     }
 
-    public void startClient() {
+    public void startClient(String[] address) {
+    	System.out.println("Servidor>-s: A definir o endereço IP e o porto do servidor.");
+    	int port = 1024; //default
+        String ip = "localhost"; //default
+        try {
+
+            ip = address[0];
+            port = Integer.parseInt(address[1]);
+
+            if (port < 1 || port > 65535) {
+                System.out.println("Invalid port! Must be 1-65535.");
+                return;
+            }
+
+
+        } catch (NumberFormatException e) {
+            System.out.println("Port must be a number!");
+            return;
+        }
         Socket soc = null;
 
         try {
