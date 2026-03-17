@@ -18,6 +18,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Scanner;
 
 public class mySaude {
@@ -25,14 +27,23 @@ public class mySaude {
 	private int port;
 
     public static void main(String[] args) {
-        System.out.println("cliente: main");
+        System.out.println("cliente> A iniciar...");
         mySaude client = new mySaude();
         
-        if (args.length < 1) {
-            System.out.println("Usage: java mySaude <port>");
-            return;
+        Map<String, String> flags = new HashMap<>();
+        for (int i = 0; i < args.length; i++) {
+            if (args[i].startsWith("-")) {
+                if (i + 1 < args.length && !args[i + 1].startsWith("-")) {
+                    flags.put(args[i], args[i + 1]);
+                    i++;
+                } else {
+                    flags.put(args[i], "true");
+                }
+            }
         }
 
+        System.out.println(flags);
+ 
         try {
             int port = Integer.parseInt(args[0]);
 
