@@ -43,6 +43,10 @@ public class mySaude {
 	public Socket sock;
     public ObjectOutputStream objOut;
     public ObjectInputStream objIn;
+    
+    public String username;
+    public String password;
+    public String receiver;
 	
 	
 	public static mySaude client = new mySaude();
@@ -164,24 +168,30 @@ public class mySaude {
 	public static String inicialize(Map<String, String> flags) throws ConnectException {
         String option = null;
         for (String key : flags.keySet()) {
-        	if(option != null) {
-        		throw new IllegalArgumentException("There can only be one option!\nWhat was flagged:\n\t " + option + "\n\t " + key);
-        	}
         	switch (key) {
 	            // 1. Flags de Conexão e Identificação
 	            case "-s": client.startClient(flags.get("-s").split(":"));
 	                break;
 	            case "-u":
 	                System.out.println("-u: Identifica o utilizador que executa o comando.");
+	                client.username = flags.get("-u");
 	                break;
 	            case "-p":
 	                System.out.println("-p: Password para aceder à keystore local do utilizador.");
+	                client.password = flags.get("-p");
 	                break;
 	            case "-t":
 	                System.out.println("-t: Define o destinatário ou o autor da operação.");
+	                client.receiver = flags.get("-t");
 	                break;
 	            default:
 	            	//if not any of the others its the option!
+	            	if (option != null) {
+	                    throw new IllegalArgumentException(
+	                        "There can only be one option!\nWhat was flagged:\n\t "
+	                        + option + "\n\t " + key
+	                    );
+	                }
 	        		option = key;
             	
         	}
