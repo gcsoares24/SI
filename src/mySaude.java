@@ -252,34 +252,29 @@ public class mySaude {
 	    String[] paths = filePaths.split(";");
 
 	    try {
-	        DataOutputStream dataOut = new DataOutputStream(client.sock.getOutputStream());
-	    	dataOut.writeInt(paths.length);
-	    	
+	    	// num
+	        client.objOut.writeInt(paths.length);
+	        client.objOut.flush();
 
-	        
 	        for (String path : paths) {
 	            File file = new File(path.trim());
 	            if (!file.exists()) {
 	                System.out.println("Skipping missing file: " + path);
-	                continue; // skip this file
+	                continue; // ignora ficheiros que não existem
 	            }
 
-	            // Send file name
-	            dataOut.writeUTF(file.getName());
-	            // Send file length
-	            dataOut.writeLong(file.length());
-
-	            // Send file content
+	            // Envia o nome do ficheiro
+	            client.objOut.writeObject(file.getName());
+	            // Lê o conteúdo do ficheiro
 	            FileInputStream fis = new FileInputStream(file);
-	            byte[] buffer = new byte[8192];
-	            int read;
-	            while ((read = fis.read(buffer)) > 0) {
-	                dataOut.write(buffer, 0, read);
-	            }
+	            byte[] fileBytes = fis.readAllBytes();
 	            fis.close();
 
+	            // Envia o conteúdo do ficheiro como byte[]
+	            client.objOut.writeObject(fileBytes);
+	            client.objOut.flush();
+
 	            System.out.println("File sent successfully: " + path);
-		        dataOut.flush();
 	        }
 
 	    } catch (IOException e) {
