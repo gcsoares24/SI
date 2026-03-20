@@ -67,8 +67,8 @@ public class mySaude {
             if(option == null) {
                 throw new IllegalArgumentException("There is no option");
             }
-            
-            
+            //sends type of operation to server
+            client.objOut.writeUTF(option);
             
             switchCase(option, flags.get(option));
 	
@@ -284,31 +284,28 @@ public class mySaude {
 	
 	
 	public void receiveFiles(String filePaths) {
-
-	    if (client.sock == null || client.objOut == null) {
-	        System.out.println("Socket is not connected. Call startClient first.");
-	        return;
-	    }
-
-	    String[] requestedFiles = filePaths.split(";");
-
 	    try {
-	        // 🔹 1. Enviar pedido ao servidor
-	        client.objOut.writeObject(requestedFiles);
-	        client.objOut.flush();
-
-	        // 🔹 2. Receber resposta
+	        DataOutputStream dataOut = new DataOutputStream(client.sock.getOutputStream());
 	        DataInputStream dataIn = new DataInputStream(client.sock.getInputStream());
 
+
+	        String[] requestedFiles = filePaths.split(";");
+
+	        // 🔹 enviar lista de ficheiros pedidos
+	        dataOut.writeInt(requestedFiles.length);
+	        for (String f : requestedFiles) {
+	            dataOut.writeUTF(f);
+	        }
+	        dataOut.flush();
+
+	        // 🔹 receber ficheiros
 	        int numFiles = dataIn.readInt();
 
 	        for (int i = 0; i < numFiles; i++) {
-
 	            String fileName = dataIn.readUTF();
 	            long fileSize = dataIn.readLong();
 
-	            File file = new File(fileName);
-	            FileOutputStream fos = new FileOutputStream(file);
+	            FileOutputStream fos = new FileOutputStream(fileName);
 
 	            byte[] buffer = new byte[8192];
 	            long remaining = fileSize;
@@ -322,8 +319,6 @@ public class mySaude {
 	            }
 
 	            fos.close();
-
-	            System.out.println("File received: " + fileName);
 	        }
 
 	    } catch (IOException e) {

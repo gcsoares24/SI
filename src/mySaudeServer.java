@@ -87,7 +87,23 @@ public class mySaudeServer{
 	        try {
 	            ObjectOutputStream outStream = new ObjectOutputStream(socket.getOutputStream());
 	            ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream());
+	            
+	            String option = inStream.readUTF();
+	            
+	            switch (option) {
 
+	            case "-e": // cliente envia ficheiros
+	                receiveFiles(socket, "../pdfs/");
+	                break;
+
+	            case "-r": // cliente quer receber ficheiros
+	                sendFiles(socket);
+	                break;
+
+	            default:
+	                System.out.println("Unknown operation: " + option);
+	        }
+	            
 	            // --- LOGIN ---
 //	            String user = (String) inStream.readObject();
 //	            String passwd = (String) inStream.readObject();
@@ -104,7 +120,7 @@ public class mySaudeServer{
 //	            } else {
 //	                System.out.println("Login falhou para o usuário: " + user);
 //	            }
-	            receiveFiles(socket, "../pdfs/");
+	            
 
 	            // --- cleanup ---
 	            inStream.close();
