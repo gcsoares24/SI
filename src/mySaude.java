@@ -25,6 +25,15 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import java.security.KeyStore;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.cert.Certificate;
+
 
 public class mySaude {
 	
@@ -53,11 +62,11 @@ public class mySaude {
 	
 	public static mySaude client = new mySaude();
 		
-    public static void main(String[] args) throws IllegalArgumentException{
+	public static void main(String[] args) throws IllegalArgumentException{
 
-        try {
-	        System.out.println("cliente> A iniciar...");
-	        Map<String, String> flags = argsMapping(args);
+		try {
+			System.out.println("cliente> A iniciar...");
+			Map<String, String> flags = argsMapping(args);
 	        
 	        System.out.printf("flags: ", flags);
 	        
@@ -67,7 +76,7 @@ public class mySaude {
             if(option == null) {
                 throw new IllegalArgumentException("There is no option");
             }
-            //sends type of operation to server
+			//sends type of operation to server
             client.objOut.writeObject(option);
             client.objOut.flush();
             
@@ -110,9 +119,11 @@ public class mySaude {
 	        // 2B. Criptografia
 	        case "-c":
 	            System.out.println("-c: Cifra ficheiros localmente (AES + RSA).");
+				client.encryptFiles(value, client.receiver);
 	            break;
 	        case "-d":
 	            System.out.println("-d: Decifra ficheiros usando a chave local.");
+				client.decryptFiles(value);
 	            break;
 	
 	        // 2C. Assinatura Digital
@@ -143,10 +154,10 @@ public class mySaude {
 	            System.out.println("-rdv: Recebe, decifra e valida assinatura de ficheiros.");
 	            break;
 	
-	        default:
+			default:
 	            System.out.println("Unknown flag: " + option);
     	}
-    }
+	}
     
     private static Map<String, String> argsMapping(String[] args) throws IllegalArgumentException {
 	    Map<String, String> flags = new LinkedHashMap<>();
@@ -181,7 +192,7 @@ public class mySaude {
 	}
 	
 	public static String inicialize(Map<String, String> flags) throws ConnectException {
-        String option = null;
+		String option = null;
         for (String key : flags.keySet()) {
         	switch (key) {
 	            // 1. Flags de Conexão e Identificação
@@ -256,28 +267,30 @@ public class mySaude {
 	    String[] paths = filePaths.split(";");
 
 	    try {
-	    	// num
 	        client.objOut.writeInt(paths.length);
 	        client.objOut.flush();
 	        
 	        client.objOut.writeUTF(receiver);
 	        client.objOut.flush();
+	    	
 
+	        
 	        for (String path : paths) {
 	            File file = new File(path.trim());
 	            if (!file.exists()) {
 	                System.out.println("Skipping missing file: " + path);
-	                continue; // ignora ficheiros que não existem
+	                continue; // skip this file
 	            }
 
 	            // Envia o nome do ficheiro
 	            client.objOut.writeObject(file.getName());
 	            // Lê o conteúdo do ficheiro
-	            FileInputStream fis = new FileInputStream(file);
+				FileInputStream fis = new FileInputStream(file);
 	            byte[] fileBytes = fis.readAllBytes();
 	            fis.close();
 
 	            // Envia o conteúdo do ficheiro como byte[]
+				// Envia o conteúdo do ficheiro como byte[]
 	            client.objOut.writeObject(fileBytes);
 	            client.objOut.flush();
 
@@ -295,8 +308,7 @@ public class mySaude {
 	        DataOutputStream dataOut = new DataOutputStream(client.sock.getOutputStream());
 	        DataInputStream dataIn = new DataInputStream(client.sock.getInputStream());
 
-
-	        String[] requestedFiles = filePaths.split(";");
+	    	String[] requestedFiles = filePaths.split(";");
 
 	        // 🔹 enviar lista de ficheiros pedidos
 	        dataOut.writeInt(requestedFiles.length);
@@ -304,11 +316,12 @@ public class mySaude {
 	            dataOut.writeUTF(f);
 	        }
 	        dataOut.flush();
-
-	        // 🔹 receber ficheiros
+			
+			// 🔹 receber ficheiros
 	        int numFiles = dataIn.readInt();
 
 	        for (int i = 0; i < numFiles; i++) {
+
 	            String fileName = dataIn.readUTF();
 	            long fileSize = dataIn.readLong();
 
@@ -332,4 +345,101 @@ public class mySaude {
 	        e.printStackTrace();
 	    }
 	}
+	public void encryptFiles(String filePaths, String targetUser) {
+	String[] paths = filePaths.split(";");
+	try {
+		KeyStore ks = KeyStore.getInstance("JKS");
+		try (FileInputStream fis = new FileInputStream("keystore." + this.username)) {
+			ks.load(fis, this.password.toCharArray());
+		}
+
+		Certificate cert = ks.getCertificate(targetUser);
+		if (cert == null) {
+			System.err.println("Error: Certificate for " + targetUser + " not found.");
+			return;
+		}
+		PublicKey publicKey = cert.getPublicKey();
+
+		for (String path : paths) {
+			File inputFile = new File(path.trim());
+			if (!inputFile.exists()) continue;
+
+			KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+			keyGen.init(128);
+			SecretKey aesKey = keyGen.generateKey();
+
+			Cipher aesCipher = Cipher.getInstance("AES");
+			aesCipher.init(Cipher.ENCRYPT_MODE, aesKey);
+			
+			try (FileInputStream fis = new FileInputStream(inputFile);
+				 FileOutputStream fos = new FileOutputStream(path + ".encrypted")) {
+				byte[] buffer = new byte[8192];
+				int read;
+				while ((read = fis.read(buffer)) > 0) {
+					fos.write(aesCipher.update(buffer, 0, read));
+				}
+				fos.write(aesCipher.doFinal());
+			}
+
+			Cipher rsaCipher = Cipher.getInstance("RSA");
+			rsaCipher.init(Cipher.WRAP_MODE, publicKey);
+			byte[] wrappedKey = rsaCipher.wrap(aesKey);
+
+			try (FileOutputStream fos = new FileOutputStream(path + ".key." + targetUser)) {
+				fos.write(wrappedKey);
+			}
+			System.out.println("File encrypted: " + path + ".encrypted");
+		}
+	} catch (Exception e) {
+		System.err.println("Encryption error: " + e.getMessage());
+	}
+	}
+
+	public void decryptFiles(String filePaths) {
+	String[] paths = filePaths.split(";");
+	try {
+		KeyStore ks = KeyStore.getInstance("JKS");
+		try (FileInputStream fis = new FileInputStream("keystore." + this.username)) {
+			ks.load(fis, this.password.toCharArray());
+		}
+
+		PrivateKey privateKey = (PrivateKey) ks.getKey(this.username, this.password.toCharArray());
+
+		for (String path : paths) {
+			String baseName = path.replace(".encrypted", "");
+			File keyFile = new File(baseName + ".key." + this.username);
+			
+			if (!keyFile.exists()) {
+				System.err.println("Error: Key file not found for " + path);
+				continue;
+			}
+
+			byte[] wrappedKey = new byte[(int) keyFile.length()];
+			try (FileInputStream fis = new FileInputStream(keyFile)) {
+				fis.read(wrappedKey);
+			}
+
+			Cipher rsaCipher = Cipher.getInstance("RSA");
+			rsaCipher.init(Cipher.UNWRAP_MODE, privateKey);
+			SecretKey aesKey = (SecretKey) rsaCipher.unwrap(wrappedKey, "AES", Cipher.SECRET_KEY);
+
+			Cipher aesCipher = Cipher.getInstance("AES");
+			aesCipher.init(Cipher.DECRYPT_MODE, aesKey);
+
+			try (FileInputStream fis = new FileInputStream(path);
+				 FileOutputStream fos = new FileOutputStream(baseName + ".decrypted")) {
+				byte[] buffer = new byte[8192];
+				int read;
+				while ((read = fis.read(buffer)) > 0) {
+					fos.write(aesCipher.update(buffer, 0, read));
+				}
+				fos.write(aesCipher.doFinal());
+			}
+			System.out.println("File decrypted successfully.");
+		}
+	} catch (Exception e) {
+		System.err.println("Decryption error: " + e.getMessage());
+	}
+
+}
 }
