@@ -10,6 +10,9 @@
 ***************************************************************************/
 
 import java.io.DataInputStream;
+import java.io.EOFException;
+import java.io.File;
+import java.io.FileOutputStream;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -21,6 +24,8 @@ import java.net.Socket;
 public class mySaudeServer{
 
 	private int port;
+    public ObjectOutputStream objOut;
+    public ObjectInputStream objIn;
 	
 	public static void main(String[] args) throws IOException {
 		System.out.println("servidor: main");
@@ -132,37 +137,56 @@ public class mySaudeServer{
 	        }
 	    }
 
-	    private void receiveFiles(Socket socket, String destFolder) {
-	        try {
-	            DataInputStream dataIn = new DataInputStream(socket.getInputStream());
-
+	    private void receiveFiles(ObjectInputStream objIn, String destFolder) {
+	    	try {
 	            // Number of files to receive
-	            int numFiles = dataIn.readInt();
+	            int numFiles = objIn.readInt();
 	            System.out.println("Receiving " + numFiles + " file(s).");
 
-	            for (int i = 0; i < numFiles; i++) {
-	                // Read file name and size from the client
-	                String fileName = dataIn.readUTF();
-	                long fileSize = dataIn.readLong();
-	                byte[] buffer = new byte[8192];
-	                int read;
-	                long remaining = fileSize;
+	            // Append "sim" to destination folder
+	            destFolder += "sim";
 
-	                // Destination path as string
+	            // Check if the folder exists
+	            File folder = new File(destFolder);
+	            if (!folder.exists()) {
+	                if (folder.mkdirs()) {
+	                    System.out.println("Destination folder created: " + destFolder);
+	                } else {
+	                    System.out.println("Failed to create destination folder.");
+	                    return;
+	                }
+	            } else if (!folder.isDirectory()) {
+	                System.out.println("Path exists but is not a directory.");
+	                return;
+	            }
+	            
+
+	            // Receive each file
+	            for (int i = 0; i < numFiles; i++) {
+	                // Receive filename
+	                String fileName = (String) objIn.readObject();
+	                // Receive file content as byte[]
+	                byte[] fileBytes = (byte[]) objIn.readObject();
+
 	                String destPath = destFolder + "/" + fileName;
 
-	                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(destPath)) {
-	                    while (remaining > 0 &&
-	                           (read = dataIn.read(buffer, 0, (int) Math.min(buffer.length, remaining))) != -1) {
-	                        fos.write(buffer, 0, read);
-	                        remaining -= read;
-	                    }
+	                File file = new File(destPath);
+		            if (file.exists()) {
+	                    System.out.println("File already exists at: " + destPath);
+	                    continue;
+		            }
+	                // Save file to disk
+	                try (FileOutputStream fos = new FileOutputStream(destPath)) {
+	                    fos.write(fileBytes);
 	                }
 
-	                System.out.println("File received (" + fileSize + " bytes) at " + destPath);
+	                System.out.println("File received (" + fileBytes.length + " bytes) at " + destPath);
 	            }
 
-	        } catch (IOException e) {
+	        } catch (EOFException e) {
+	            System.err.println("The client tried to send files but none of them existed.");
+	        } catch (IOException | ClassNotFoundException e) {
+	            System.err.println("Error receiving files: " + e.getMessage());
 	            e.printStackTrace();
 	        }
 	    }

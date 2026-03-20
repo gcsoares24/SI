@@ -72,6 +72,16 @@ public class mySaude {
             
             switchCase(option, flags.get(option));
 	
+            //
+            // ELIMINAR
+            //
+            // ELIMINAR
+            // ELIMINAR
+            //
+            // ELIMINAR
+            // ELIMINAR
+            //
+            // ELIMINAR
 	        System.out.println(flags);
 	 
 	    }catch(Exception e){
@@ -187,12 +197,9 @@ public class mySaude {
 	                break;
 	            default:
 	            	//if not any of the others its the option!
-	            	if (option != null) {
-	                    throw new IllegalArgumentException(
-	                        "There can only be one option!\nWhat was flagged:\n\t "
-	                        + option + "\n\t " + key
-	                    );
-	                }
+	            	if(option != null) {
+	            		throw new IllegalArgumentException("There can only be one option!\nWhat was flagged:\n\t " + option + "\n\t " + key);
+	            	}
 	        		option = key;
             	
         	}
@@ -242,41 +249,34 @@ public class mySaude {
 	        return;
 	    }
 
-	    // Split the paths by some delimiter (e.g., ";" or ",")
-	    String[] files = filePaths.split(";"); // adjust delimiter as needed
+	    String[] paths = filePaths.split(";");
 
 	    try {
-	        DataOutputStream dataOut = new DataOutputStream(client.sock.getOutputStream());
+	    	// num
+	        client.objOut.writeInt(paths.length);
+	        client.objOut.flush();
 
-	        // First, send the number of files
-	        dataOut.writeInt(files.length);
-
-	        for (String path : files) {
+	        for (String path : paths) {
 	            File file = new File(path.trim());
 	            if (!file.exists()) {
-	                System.out.println("File does not exist: " + path);
-	                continue;
+	                System.out.println("Skipping missing file: " + path);
+	                continue; // ignora ficheiros que não existem
 	            }
 
-	            // Send file name length and name
-	            dataOut.writeUTF(file.getName());
-
-	            // Send file length
-	            dataOut.writeLong(file.length());
-
-	            // Send file content
+	            // Envia o nome do ficheiro
+	            client.objOut.writeObject(file.getName());
+	            // Lê o conteúdo do ficheiro
 	            FileInputStream fis = new FileInputStream(file);
-	            byte[] buffer = new byte[8192];
-	            int read;
-	            while ((read = fis.read(buffer)) > 0) {
-	                dataOut.write(buffer, 0, read);
-	            }
+	            byte[] fileBytes = fis.readAllBytes();
 	            fis.close();
+
+	            // Envia o conteúdo do ficheiro como byte[]
+	            client.objOut.writeObject(fileBytes);
+	            client.objOut.flush();
 
 	            System.out.println("File sent successfully: " + path);
 	        }
 
-	        dataOut.flush();
 	    } catch (IOException e) {
 	        e.printStackTrace();
 	    }
