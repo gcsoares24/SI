@@ -14,6 +14,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -43,6 +44,10 @@ public class mySaude {
 	public Socket sock;
     public ObjectOutputStream objOut;
     public ObjectInputStream objIn;
+    
+    public String username;
+    public String password;
+    public String receiver;
 	
 	
 	public static mySaude client = new mySaude();
@@ -174,19 +179,21 @@ public class mySaude {
 	public static String inicialize(Map<String, String> flags) throws ConnectException {
         String option = null;
         for (String key : flags.keySet()) {
-        	
         	switch (key) {
 	            // 1. Flags de Conexão e Identificação
 	            case "-s": client.startClient(flags.get("-s").split(":"));
 	                break;
 	            case "-u":
 	                System.out.println("-u: Identifica o utilizador que executa o comando.");
+	                client.username = flags.get("-u");
 	                break;
 	            case "-p":
 	                System.out.println("-p: Password para aceder à keystore local do utilizador.");
+	                client.password = flags.get("-p");
 	                break;
 	            case "-t":
 	                System.out.println("-t: Define o destinatário ou o autor da operação.");
+	                client.receiver = flags.get("-t");
 	                break;
 	            default:
 	            	//if not any of the others its the option!
@@ -273,6 +280,55 @@ public class mySaude {
 
 	            System.out.println("File sent successfully: " + path);
 		        dataOut.flush();
+	        }
+
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	    }
+	}
+	
+	
+	public void receiveFiles(String filePaths) {
+
+	    if (client.sock == null || client.objOut == null) {
+	        System.out.println("Socket is not connected. Call startClient first.");
+	        return;
+	    }
+
+	    String[] requestedFiles = filePaths.split(";");
+
+	    try {
+	        // 🔹 1. Enviar pedido ao servidor
+	        client.objOut.writeObject(requestedFiles);
+	        client.objOut.flush();
+
+	        // 🔹 2. Receber resposta
+	        DataInputStream dataIn = new DataInputStream(client.sock.getInputStream());
+
+	        int numFiles = dataIn.readInt();
+
+	        for (int i = 0; i < numFiles; i++) {
+
+	            String fileName = dataIn.readUTF();
+	            long fileSize = dataIn.readLong();
+
+	            File file = new File(fileName);
+	            FileOutputStream fos = new FileOutputStream(file);
+
+	            byte[] buffer = new byte[8192];
+	            long remaining = fileSize;
+	            int read;
+
+	            while (remaining > 0 &&
+	                   (read = dataIn.read(buffer, 0, (int)Math.min(buffer.length, remaining))) != -1) {
+
+	                fos.write(buffer, 0, read);
+	                remaining -= read;
+	            }
+
+	            fos.close();
+
+	            System.out.println("File received: " + fileName);
 	        }
 
 	    } catch (IOException e) {
