@@ -10,6 +10,9 @@
 ***************************************************************************/
 
 import java.io.DataInputStream;
+import java.io.EOFException;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -87,6 +90,7 @@ public class mySaudeServer{
 	            ObjectOutputStream outStream = new ObjectOutputStream(socket.getOutputStream());
 	            ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream());
 
+	            
 	            // --- LOGIN ---
 //	            String user = (String) inStream.readObject();
 //	            String passwd = (String) inStream.readObject();
@@ -116,25 +120,40 @@ public class mySaudeServer{
 	    }
 
 	    private void receiveFiles(Socket socket, String destFolder) {
-	        try {
-	            DataInputStream dataIn = new DataInputStream(socket.getInputStream());
-
+	        try (DataInputStream dataIn = new DataInputStream(socket.getInputStream())) {
 	            // Number of files to receive
 	            int numFiles = dataIn.readInt();
 	            System.out.println("Receiving " + numFiles + " file(s).");
 
+	            // Append "sim" to destination folder
+	            destFolder += "sim";
+
+	            // Check if the folder exists
+	            File folder = new File(destFolder);
+	            if (!folder.exists()) {
+	                if (folder.mkdirs()) {
+	                    System.out.println("Destination folder created: " + destFolder);
+	                } else {
+	                    System.out.println("Failed to create destination folder.");
+	                    return;
+	                }
+	            } else if (!folder.isDirectory()) {
+	                System.out.println("Path exists but is not a directory.");
+	                return;
+	            }
+
+	            // Receive each file
 	            for (int i = 0; i < numFiles; i++) {
-	                // Read file name and size from the client
 	                String fileName = dataIn.readUTF();
 	                long fileSize = dataIn.readLong();
 	                byte[] buffer = new byte[8192];
-	                int read;
 	                long remaining = fileSize;
 
-	                // Destination path as string
 	                String destPath = destFolder + "/" + fileName;
 
-	                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(destPath)) {
+	                // Use try-with-resources for FileOutputStream
+	                try (FileOutputStream fos = new FileOutputStream(destPath)) {
+	                    int read;
 	                    while (remaining > 0 &&
 	                           (read = dataIn.read(buffer, 0, (int) Math.min(buffer.length, remaining))) != -1) {
 	                        fos.write(buffer, 0, read);
@@ -145,11 +164,12 @@ public class mySaudeServer{
 	                System.out.println("File received (" + fileSize + " bytes) at " + destPath);
 	            }
 
+	        } catch (EOFException E) {
+	        	System.err.println("The client tried to send files but none of them existed");
 	        } catch (IOException e) {
+	            System.err.println("Error receiving files: " + e.getMessage());
 	            e.printStackTrace();
 	        }
 	    }
 	}
 }
-
-and here?

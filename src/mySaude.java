@@ -67,6 +67,16 @@ public class mySaude {
             
             switchCase(option, flags.get(option));
 	
+            //
+            // ELIMINAR
+            //
+            // ELIMINAR
+            // ELIMINAR
+            //
+            // ELIMINAR
+            // ELIMINAR
+            //
+            // ELIMINAR
 	        System.out.println(flags);
 	 
 	    }catch(Exception e){
@@ -164,9 +174,7 @@ public class mySaude {
 	public static String inicialize(Map<String, String> flags) throws ConnectException {
         String option = null;
         for (String key : flags.keySet()) {
-        	if(option != null) {
-        		throw new IllegalArgumentException("There can only be one option!\nWhat was flagged:\n\t " + option + "\n\t " + key);
-        	}
+        	
         	switch (key) {
 	            // 1. Flags de Conexão e Identificação
 	            case "-s": client.startClient(flags.get("-s").split(":"));
@@ -182,6 +190,9 @@ public class mySaude {
 	                break;
 	            default:
 	            	//if not any of the others its the option!
+	            	if(option != null) {
+	            		throw new IllegalArgumentException("There can only be one option!\nWhat was flagged:\n\t " + option + "\n\t " + key);
+	            	}
 	        		option = key;
             	
         	}
@@ -231,25 +242,23 @@ public class mySaude {
 	        return;
 	    }
 
-	    // Split the paths by some delimiter (e.g., ";" or ",")
-	    String[] files = filePaths.split(";"); // adjust delimiter as needed
+	    String[] paths = filePaths.split(";");
 
 	    try {
 	        DataOutputStream dataOut = new DataOutputStream(client.sock.getOutputStream());
+	    	dataOut.writeInt(paths.length);
+	    	
 
-	        // First, send the number of files
-	        dataOut.writeInt(files.length);
-
-	        for (String path : files) {
+	        
+	        for (String path : paths) {
 	            File file = new File(path.trim());
 	            if (!file.exists()) {
-	                System.out.println("File does not exist: " + path);
-	                continue;
+	                System.out.println("Skipping missing file: " + path);
+	                continue; // skip this file
 	            }
 
-	            // Send file name length and name
+	            // Send file name
 	            dataOut.writeUTF(file.getName());
-
 	            // Send file length
 	            dataOut.writeLong(file.length());
 
@@ -263,9 +272,9 @@ public class mySaude {
 	            fis.close();
 
 	            System.out.println("File sent successfully: " + path);
+		        dataOut.flush();
 	        }
 
-	        dataOut.flush();
 	    } catch (IOException e) {
 	        e.printStackTrace();
 	    }
