@@ -12,6 +12,7 @@
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -56,7 +57,6 @@ public class mySaude {
 
         try {
 	        System.out.println("cliente> A iniciar...");
-	        mySaude client = new mySaude();
 	        Map<String, String> flags = argsMapping(args);
 	        
 	        System.out.printf("flags: ", flags);
@@ -68,7 +68,8 @@ public class mySaude {
                 throw new IllegalArgumentException("There is no option");
             }
             //sends type of operation to server
-            client.objOut.writeUTF(option);
+            client.objOut.writeObject(option);
+            client.objOut.flush();
             
             switchCase(option, flags.get(option));
 	
@@ -91,13 +92,16 @@ public class mySaude {
 
     }
     
-    private static void switchCase(String option, String value) {
+    private static void switchCase(String option, String value) throws EOFException {
     	switch (option) {
 	
 	        // 2A. Transferência de Ficheiros
 	        case "-e":
 	            System.out.println("-e: Envia ficheiros para o servidor.");
-	            client.sendFiles(value);
+	            if(client.receiver == null) {
+	            	throw new EOFException("There is no -t (receiver).");
+	            }
+	            client.sendFiles(value, client.receiver);
 	            break;
 	        case "-r":
 	            System.out.println("-r: Recebe ficheiros do servidor.");
@@ -243,7 +247,7 @@ public class mySaude {
 	}
 	
 	
-	public void sendFiles(String filePaths) {
+	public void sendFiles(String filePaths, String receiver) {
 	    if (client.sock == null || client.objOut == null) {
 	        System.out.println("Socket is not connected. Call startClient first.");
 	        return;
@@ -254,6 +258,9 @@ public class mySaude {
 	    try {
 	    	// num
 	        client.objOut.writeInt(paths.length);
+	        client.objOut.flush();
+	        
+	        client.objOut.writeUTF(receiver);
 	        client.objOut.flush();
 
 	        for (String path : paths) {

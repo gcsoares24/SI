@@ -92,17 +92,18 @@ public class mySaudeServer{
 	        try {
 	            ObjectOutputStream outStream = new ObjectOutputStream(socket.getOutputStream());
 	            ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream());
+	           	            
 	            
-	            String option = inStream.readUTF();
+	            String option = (String) inStream.readObject();
 	            
 	            switch (option) {
 
 	            case "-e": // cliente envia ficheiros
-	                receiveFiles(socket, "../pdfs/");
+	                receiveFiles(inStream, "../pdfs/");
 	                break;
 
 	            case "-r": // cliente quer receber ficheiros
-	                sendFiles(socket);
+	                sendFiles(inStream);
 	                break;
 
 	            default:
@@ -132,19 +133,29 @@ public class mySaudeServer{
 	            outStream.close();
 	            socket.close();
 
-	        } catch (IOException e) {
+	        } catch (IOException | ClassNotFoundException e) {
 	            e.printStackTrace();
 	        }
 	    }
 
-	    private void receiveFiles(ObjectInputStream objIn, String destFolder) {
+	    private void sendFiles(ObjectInputStream inStream) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		private void receiveFiles(ObjectInputStream objIn, String destFolder) {
 	    	try {
 	            // Number of files to receive
 	            int numFiles = objIn.readInt();
 	            System.out.println("Receiving " + numFiles + " file(s).");
+	            
+	            // receiver
+	            
+	            String receiver = objIn.readUTF();
+	            
 
 	            // Append "sim" to destination folder
-	            destFolder += "sim";
+	            destFolder += receiver;
 
 	            // Check if the folder exists
 	            File folder = new File(destFolder);
@@ -184,7 +195,7 @@ public class mySaudeServer{
 	            }
 
 	        } catch (EOFException e) {
-	            System.err.println("The client tried to send files but none of them existed.");
+	            System.err.println("The client tried to send files but none of them existed or there was no receiver.");
 	        } catch (IOException | ClassNotFoundException e) {
 	            System.err.println("Error receiving files: " + e.getMessage());
 	            e.printStackTrace();
