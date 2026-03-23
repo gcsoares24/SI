@@ -12,6 +12,7 @@
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -27,10 +28,23 @@ import java.util.Set;
 
 public class mySaude {
 	
+	private static final String NO_DIRECTORY = "NO_DIRECTORY";
+	private static final String OK = "OK";
+	private static final String FILE_NOT_FOUND_FLAG = "__FILE_NOT_FOUND__";
+	private static final String SERVER_FILE_EXISTS = "SERVER_FILE_EXISTS";
+	private static final String OK_TO_SEND = "OK_TO_SEND";
+	
 	private static final Set<String> OPTIONS = Set.of(
 		    "-e", "-r", "-c", "-d",
 		    "-ce", "-rd",
 		    "-a", "-v",
+		    "-ae", "-rv",
+		    "-ace", "-rdv"
+		);
+	
+	private static final Set<String> SERVER_OPTIONS = Set.of(
+		    "-e", "-r",
+		    "-ce", "-rd",
 		    "-ae", "-rv",
 		    "-ace", "-rdv"
 		);
@@ -56,10 +70,9 @@ public class mySaude {
 
         try {
 	        System.out.println("cliente> A iniciar...");
-	        mySaude client = new mySaude();
 	        Map<String, String> flags = argsMapping(args);
 	        
-	        System.out.printf("flags: ", flags);
+	        System.out.println("flags: "+ flags);
 	        
 	        
 	        String option = inicialize(flags);
@@ -69,6 +82,15 @@ public class mySaude {
             }
             
             
+            //sends only server type of operation
+            if (SERVER_OPTIONS.contains(option)) {
+            	if (client.objOut == null) {
+                    throw new IllegalArgumentException("A opção " + option + " requer ligação ao servidor (-s).");
+                }
+            	
+            	client.objOut.writeObject(option);
+                client.objOut.flush();
+            }
             
             switchCase(option, flags.get(option));
 	
@@ -87,17 +109,22 @@ public class mySaude {
 	    }catch(Exception e){
 	        	System.out.println("\n\nIt seems like your option has an error:\n\n" + e.getMessage());
 	        	return;
+	     } finally {
+	         client.closeClientResources();
 	     }
 
     }
     
-    private static void switchCase(String option, String value) {
+    private static void switchCase(String option, String value) throws EOFException {
     	switch (option) {
 	
 	        // 2A. Transferência de Ficheiros
 	        case "-e":
 	            System.out.println("-e: Envia ficheiros para o servidor.");
-	            client.sendFiles(value);
+	            if(client.receiver == null) {
+	            	throw new EOFException("There is no -t (receiver).");
+	            }
+	            client.sendFiles(value, client.receiver);
 	            break;
 	        case "-r":
 	            System.out.println("-r: Recebe ficheiros do servidor.");
@@ -210,25 +237,26 @@ public class mySaude {
 	public void startClient(String[] address) throws ConnectException {
 	    System.out.println("Servidor>-s: A definir o endereço IP e o porto do servidor.");
 
-	    int port = 1024; // default
-	    String ip = "localhost"; // default
+	    int port;
+	    String ip;
 
 	    try {
+	        if (address.length != 2) {
+	            throw new IllegalArgumentException("O endereço do servidor deve estar no formato IP:porto.");
+	        }
+
 	        ip = address[0];
 	        port = Integer.parseInt(address[1]);
 
 	        if (port < 1 || port > 65535) {
-	            System.out.println("Invalid port! Must be 1-65535.");
-	            return;
+	            throw new IllegalArgumentException("Invalid port! Must be 1-65535.");
 	        }
 
 	    } catch (NumberFormatException e) {
-	        System.out.println("Port must be a number!");
-	        return;
+	        throw new IllegalArgumentException("Port must be a number!");
 	    }
 
 	    try {
-	        // Only create socket and object streams here
 	        client.sock = new Socket(ip, port);
 	        client.objOut = new ObjectOutputStream(client.sock.getOutputStream());
 	        client.objIn = new ObjectInputStream(client.sock.getInputStream());
@@ -238,13 +266,13 @@ public class mySaude {
 	    } catch (ConnectException e) {
 	        throw new ConnectException("\tConnection refused. Make sure the mySaudeServer is running at the specified address and port.");
 	    } catch (IOException e) {
-	        e.printStackTrace();
+	        throw new RuntimeException("Erro ao ligar ao servidor: " + e.getMessage(), e);
 	    }
 	}
 	
 	
-	public void sendFiles(String filePaths) {
-	    if (client.sock == null || client.objOut == null) {
+	public void sendFiles(String filePaths, String receiver) {
+	    if (client.sock == null || client.objOut == null || client.objIn == null) {
 	        System.out.println("Socket is not connected. Call startClient first.");
 	        return;
 	    }
@@ -252,68 +280,100 @@ public class mySaude {
 	    String[] paths = filePaths.split(";");
 
 	    try {
-	        DataOutputStream dataOut = new DataOutputStream(client.sock.getOutputStream());
-	    	dataOut.writeInt(paths.length);
-	    	
+	        // fase 1: enviar metadados iniciais
+	        client.objOut.writeInt(paths.length);
+	        client.objOut.flush();
 
-	        
-	        for (String path : paths) {
-	            File file = new File(path.trim());
-	            if (!file.exists()) {
-	                System.out.println("Skipping missing file: " + path);
-	                continue; // skip this file
-	            }
+	        client.objOut.writeUTF(receiver);
+	        client.objOut.flush();
 
-	            // Send file name
-	            dataOut.writeUTF(file.getName());
-	            // Send file length
-	            dataOut.writeLong(file.length());
+	        // esperar resposta do servidor sobre a diretoria
+	        String serverResponse = (String) client.objIn.readObject();
 
-	            // Send file content
-	            FileInputStream fis = new FileInputStream(file);
-	            byte[] buffer = new byte[8192];
-	            int read;
-	            while ((read = fis.read(buffer)) > 0) {
-	                dataOut.write(buffer, 0, read);
-	            }
-	            fis.close();
-
-	            System.out.println("File sent successfully: " + path);
-		        dataOut.flush();
+	        if (serverResponse.equals(NO_DIRECTORY)) {
+	            System.out.println("Erro: diretoria do utilizador '" + receiver + "' não existe no servidor.");
+	            return;
 	        }
 
-	    } catch (IOException e) {
+	        if (!serverResponse.equals(OK)) {
+	            System.out.println("Erro: resposta inválida do servidor.");
+	            return;
+	        }
+
+	        // fase 2: enviar ficheiros
+	        for (String path : paths) {
+	        	File file = new File("../pdfs/" + client.username + "/" + path.trim());
+	        	
+	            if (!file.exists() || !file.isFile()) {
+	                System.out.println("Erro: ficheiro não existe do lado do cliente: " + path.trim());
+
+	                client.objOut.writeObject(FILE_NOT_FOUND_FLAG);
+	                client.objOut.writeObject(path.trim());
+	                client.objOut.flush();
+	                continue;
+	            }
+
+	            // enviar metadados do ficheiro
+	            client.objOut.writeObject(file.getName());
+	            client.objOut.writeLong(file.length());
+	            client.objOut.flush();
+
+	            // esperar confirmação do servidor
+	            String fileResponse = (String) client.objIn.readObject();
+
+	            if (fileResponse.equals(SERVER_FILE_EXISTS)) {
+	                System.out.println("Erro: ficheiro já existe no servidor: " + file.getName());
+	                continue;
+	            }
+
+	            if (!fileResponse.equals(OK_TO_SEND)) {
+	                System.out.println("Erro: resposta inválida do servidor para o ficheiro " + file.getName());
+	                continue;
+	            }
+
+	            // enviar conteúdo por blocos
+	            try (FileInputStream fis = new FileInputStream(file)) {
+	                byte[] buffer = new byte[8192];
+	                int bytesRead;
+
+	                while ((bytesRead = fis.read(buffer)) != -1) {
+	                    client.objOut.write(buffer, 0, bytesRead);
+	                }
+	                client.objOut.flush();
+	            }
+
+	            System.out.println("Ficheiro enviado com sucesso: " + file.getName());
+	        }
+
+	    } catch (IOException | ClassNotFoundException e) {
 	        e.printStackTrace();
 	    }
 	}
 	
 	
 	public void receiveFiles(String filePaths) {
-
-	    if (client.sock == null || client.objOut == null) {
-	        System.out.println("Socket is not connected. Call startClient first.");
-	        return;
-	    }
-
-	    String[] requestedFiles = filePaths.split(";");
-
 	    try {
-	        // 🔹 1. Enviar pedido ao servidor
-	        client.objOut.writeObject(requestedFiles);
-	        client.objOut.flush();
-
-	        // 🔹 2. Receber resposta
+	        DataOutputStream dataOut = new DataOutputStream(client.sock.getOutputStream());
 	        DataInputStream dataIn = new DataInputStream(client.sock.getInputStream());
 
+
+	        String[] requestedFiles = filePaths.split(";");
+
+	        // 🔹 enviar lista de ficheiros pedidos
+	        dataOut.writeInt(requestedFiles.length);
+	        for (String f : requestedFiles) {
+	            dataOut.writeUTF(f);
+	        }
+	        dataOut.flush();
+
+	        // 🔹 receber ficheiros
 	        int numFiles = dataIn.readInt();
 
 	        for (int i = 0; i < numFiles; i++) {
-
 	            String fileName = dataIn.readUTF();
 	            long fileSize = dataIn.readLong();
 
-	            File file = new File(fileName);
-	            FileOutputStream fos = new FileOutputStream(file);
+	            FileOutputStream fos = new FileOutputStream(fileName);
 
 	            byte[] buffer = new byte[8192];
 	            long remaining = fileSize;
@@ -327,12 +387,36 @@ public class mySaude {
 	            }
 
 	            fos.close();
-
-	            System.out.println("File received: " + fileName);
 	        }
 
 	    } catch (IOException e) {
 	        e.printStackTrace();
+	    }
+	}
+	
+	private void closeClientResources() {
+	    try {
+	        if (objIn != null) {
+	            objIn.close();
+	        }
+	    } catch (IOException e) {
+	        System.err.println("Erro ao fechar ObjectInputStream: " + e.getMessage());
+	    }
+
+	    try {
+	        if (objOut != null) {
+	            objOut.close();
+	        }
+	    } catch (IOException e) {
+	        System.err.println("Erro ao fechar ObjectOutputStream: " + e.getMessage());
+	    }
+
+	    try {
+	        if (sock != null && !sock.isClosed()) {
+	            sock.close();
+	        }
+	    } catch (IOException e) {
+	        System.err.println("Erro ao fechar socket: " + e.getMessage());
 	    }
 	}
 }
