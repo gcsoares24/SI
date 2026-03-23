@@ -33,6 +33,8 @@ public class mySaude {
 	private static final String FILE_NOT_FOUND_FLAG = "__FILE_NOT_FOUND__";
 	private static final String SERVER_FILE_EXISTS = "SERVER_FILE_EXISTS";
 	private static final String OK_TO_SEND = "OK_TO_SEND";
+	private static final String CLIENT_FILE_EXISTS = "CLIENT_FILE_EXISTS";
+	private static final String FILE_INFO = "FILE_INFO";
 	
 	private static final Set<String> OPTIONS = Set.of(
 		    "-e", "-r", "-c", "-d",
@@ -128,6 +130,7 @@ public class mySaude {
 	            break;
 	        case "-r":
 	            System.out.println("-r: Recebe ficheiros do servidor.");
+	            client.receiveFiles(value);
 	            break;
 	
 	        // 2B. Criptografia
@@ -270,20 +273,6 @@ public class mySaude {
 	    }
 	}
 	
-	public static boolean verifyFileExists(File file, String path) throws IOException{
-		if (!file.exists() || !file.isFile()) {
-			                System.out.println("Erro: ficheiro não existe do lado do cliente: " + path.trim());
-		
-			                client.objOut.writeObject(FILE_NOT_FOUND_FLAG);
-			                client.objOut.writeObject(path.trim());
-			                client.objOut.flush();
-			                return true;
-			            }
-		return false;
-	}
-	
-
-
 	
 	public void sendFiles(String filePaths, String receiver) {
 	    if (client.sock == null || client.objOut == null || client.objIn == null) {
@@ -314,7 +303,7 @@ public class mySaude {
 	            return;
 	        }
 
-	        // fase 2: enviar ficheiros
+	        // enviar ficheiros
 	        for (String path : paths) {
 	        	File file = new File(path.trim());
 	        	
@@ -366,10 +355,19 @@ public class mySaude {
 	
 	
 	public void receiveFiles(String filePaths) {
-	    try {
-	        DataOutputStream dataOut = new DataOutputStream(client.sock.getOutputStream());
-	        DataInputStream dataIn = new DataInputStream(client.sock.getInputStream());
+	    if (client.sock == null || client.objOut == null || client.objIn == null) {
+	        System.out.println("Socket is not connected. Call startClient first.");
+	        return;
+	    }
 
+	    String[] requestedFiles = filePaths.split(";");
+
+	    try {
+	        client.objOut.writeInt(requestedFiles.length);
+	        client.objOut.flush();
+
+	        client.objOut.writeUTF(client.username);
+	        client.objOut.flush();
 
 	        for (String requested : requestedFiles) {
 	            String fileName = requested.trim();
