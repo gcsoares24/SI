@@ -33,8 +33,6 @@ public class mySaude {
 	private static final String FILE_NOT_FOUND_FLAG = "__FILE_NOT_FOUND__";
 	private static final String SERVER_FILE_EXISTS = "SERVER_FILE_EXISTS";
 	private static final String OK_TO_SEND = "OK_TO_SEND";
-	private static final String CLIENT_FILE_EXISTS = "CLIENT_FILE_EXISTS";
-	private static final String FILE_INFO = "FILE_INFO";
 	
 	private static final Set<String> OPTIONS = Set.of(
 		    "-e", "-r", "-c", "-d",
@@ -130,7 +128,6 @@ public class mySaude {
 	            break;
 	        case "-r":
 	            System.out.println("-r: Recebe ficheiros do servidor.");
-	            client.receiveFiles(value);
 	            break;
 	
 	        // 2B. Criptografia
@@ -273,17 +270,17 @@ public class mySaude {
 	    }
 	}
 	
-		public static boolean verifyFileExists(File file, String path) throws IOException{
-			if (!file.exists() || !file.isFile()) {
-				                System.out.println("Erro: ficheiro não existe do lado do cliente: " + path.trim());
-			
-				                client.objOut.writeObject(FILE_NOT_FOUND_FLAG);
-				                client.objOut.writeObject(path.trim());
-				                client.objOut.flush();
-				                return true;
-				            }
-			return false;
-		}
+	public static boolean verifyFileExists(File file, String path) throws IOException{
+		if (!file.exists() || !file.isFile()) {
+			                System.out.println("Erro: ficheiro não existe do lado do cliente: " + path.trim());
+		
+			                client.objOut.writeObject(FILE_NOT_FOUND_FLAG);
+			                client.objOut.writeObject(path.trim());
+			                client.objOut.flush();
+			                return true;
+			            }
+		return false;
+	}
 	
 
 
@@ -317,7 +314,7 @@ public class mySaude {
 	            return;
 	        }
 
-	        // enviar ficheiros
+	        // fase 2: enviar ficheiros
 	        for (String path : paths) {
 	        	File file = new File("../pdfs/" + client.username + "/" + path.trim());
 	        
@@ -363,87 +360,47 @@ public class mySaude {
 	
 	
 	public void receiveFiles(String filePaths) {
-	    if (client.sock == null || client.objOut == null || client.objIn == null) {
-	        System.out.println("Socket is not connected. Call startClient first.");
-	        return;
-	    }
-
-	    String[] requestedFiles = filePaths.split(";");
-
 	    try {
-	        client.objOut.writeInt(requestedFiles.length);
-	        client.objOut.flush();
+	        DataOutputStream dataOut = new DataOutputStream(client.sock.getOutputStream());
+	        DataInputStream dataIn = new DataInputStream(client.sock.getInputStream());
 
-	        client.objOut.writeUTF(client.username);
-	        client.objOut.flush();
 
-	        for (String fileName : requestedFiles) {
-	            client.objOut.writeObject(fileName.trim());
-	            client.objOut.flush();
+	        String[] requestedFiles = filePaths.split(";");
+
+	        // 🔹 enviar lista de ficheiros pedidos
+	        dataOut.writeInt(requestedFiles.length);
+	        for (String f : requestedFiles) {
+	            dataOut.writeUTF(f);
+	        }
+	        dataOut.flush();
+
+	        // 🔹 receber ficheiros
+	        int numFiles = dataIn.readInt();
+
+	        for (int i = 0; i < numFiles; i++) {
+	            String fileName = dataIn.readUTF();
+	            long fileSize = dataIn.readLong();
+
+	            FileOutputStream fos = new FileOutputStream(fileName);
+
+	            byte[] buffer = new byte[8192];
+	            long remaining = fileSize;
+	            int read;
+
+	            while (remaining > 0 &&
+	                   (read = dataIn.read(buffer, 0, (int)Math.min(buffer.length, remaining))) != -1) {
+
+	                fos.write(buffer, 0, read);
+	                remaining -= read;
+	            }
+
+	            fos.close();
 	        }
 
-	        for (int i = 0; i < requestedFiles.length; i++) {
-	            String fileName = requestedFiles[i].trim();
-	            String status = (String) client.objIn.readObject();
-
-	            if (status.equals(NO_DIRECTORY)) {
-	                System.out.println("Erro: diretoria do utilizador '" + client.username + "' não existe no servidor.");
-	                return;
-	            }
-
-	            if (status.equals(FILE_NOT_FOUND_FLAG)) {
-	                System.out.println("Erro: ficheiro não existe no servidor: " + fileName);
-	                continue;
-	            }
-
-	            if (!status.equals(FILE_INFO)) {
-	                System.out.println("Erro: resposta inválida do servidor para o ficheiro " + fileName);
-	                continue;
-	            }
-
-	            long fileSize = client.objIn.readLong();
-
-	            File outFile = new File("../pdfs_recebidos/" + client.username + "/" + fileName);
-	            File parentDir = outFile.getParentFile();
-
-	            if (!parentDir.exists()) {
-	                parentDir.mkdirs();
-	            }
-
-	            if (outFile.exists()) {
-	                System.out.println("Erro: ficheiro já existe do lado do cliente: " + fileName);
-	                client.objOut.writeObject(CLIENT_FILE_EXISTS);
-	                client.objOut.flush();
-	                continue;
-	            }
-
-	            client.objOut.writeObject(OK_TO_SEND);
-	            client.objOut.flush();
-
-	            try (FileOutputStream fos = new FileOutputStream(outFile)) {
-	                byte[] buffer = new byte[8192];
-	                long remaining = fileSize;
-
-	                while (remaining > 0) {
-	                    int bytesRead = client.objIn.read(buffer, 0, (int)Math.min(buffer.length, remaining));
-
-	                    if (bytesRead == -1) {
-	                        throw new EOFException("Fim inesperado ao receber ficheiro " + fileName);
-	                    }
-
-	                    fos.write(buffer, 0, bytesRead);
-	                    remaining -= bytesRead;
-	                }
-	            }
-
-	            System.out.println("Ficheiro recebido com sucesso: " + fileName);
-	        }
-
-	    } catch (IOException | ClassNotFoundException e) {
+	    } catch (IOException e) {
 	        e.printStackTrace();
 	    }
 	}
-
 	
 	private void closeClientResources() {
 	    try {
