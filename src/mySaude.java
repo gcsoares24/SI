@@ -430,7 +430,11 @@ public class mySaude {
 
 		for (String path : paths) {
 			File inputFile = new File(path.trim());
-			if (!inputFile.exists()) continue;
+			if (!inputFile.exists()) {
+				System.err.println("ERRO: O ficheiro '" + path.trim() + "' não foi encontrado!");
+				System.err.println("-> O Java está a procurar exatamente neste caminho: " + inputFile.getAbsolutePath());
+				continue;
+			}
 
 			KeyGenerator keyGen = KeyGenerator.getInstance("AES");
 			keyGen.init(128);
@@ -495,7 +499,7 @@ public class mySaude {
 			aesCipher.init(Cipher.DECRYPT_MODE, aesKey);
 
 			try (FileInputStream fis = new FileInputStream(path);
-				 FileOutputStream fos = new FileOutputStream(baseName + ".decrypted")) {
+				FileOutputStream fos = new FileOutputStream(baseName.replace(".pdf", "_decrypted.pdf"))){
 				byte[] buffer = new byte[8192];
 				int read;
 				while ((read = fis.read(buffer)) > 0) {
