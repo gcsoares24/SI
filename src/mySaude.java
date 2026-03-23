@@ -270,17 +270,18 @@ public class mySaude {
 	    }
 	}
 	
-public static boolean verifyFileExists(File file){}
-if (!file.exists() || !file.isFile()) {
-	                System.out.println("Erro: ficheiro não existe do lado do cliente: " + path.trim());
-
-	                client.objOut.writeObject(FILE_NOT_FOUND_FLAG);
-	                client.objOut.writeObject(path.trim());
-	                client.objOut.flush();
-	                return true;
-	            }
-return false;
-}
+		public static boolean verifyFileExists(File file, String path) throws IOException{
+			if (!file.exists() || !file.isFile()) {
+				                System.out.println("Erro: ficheiro não existe do lado do cliente: " + path.trim());
+			
+				                client.objOut.writeObject(FILE_NOT_FOUND_FLAG);
+				                client.objOut.writeObject(path.trim());
+				                client.objOut.flush();
+				                return true;
+				            }
+			return false;
+		}
+	
 
 
 	
@@ -317,9 +318,9 @@ return false;
 	        for (String path : paths) {
 	        	File file = new File("../pdfs/" + client.username + "/" + path.trim());
 	        
-	            ig(verifyFileExists()){
-continue;
-}
+	            if(verifyFileExists(file, path)){
+						continue;
+						}
 	            // enviar metadados do ficheiro
 	            client.objOut.writeObject(file.getName());
 	            client.objOut.writeLong(file.length());
