@@ -22,7 +22,13 @@ import java.net.Socket;
 
 
 public class mySaudeServer{
-
+	
+	private static final String NO_DIRECTORY = "NO_DIRECTORY";
+	private static final String OK = "OK";
+	private static final String FILE_NOT_FOUND_FLAG = "__FILE_NOT_FOUND__";
+	private static final String SERVER_FILE_EXISTS = "SERVER_FILE_EXISTS";
+	private static final String OK_TO_SEND = "OK_TO_SEND";
+	
 	private int port;
     public ObjectOutputStream objOut;
     public ObjectInputStream objIn;
@@ -98,8 +104,8 @@ public class mySaudeServer{
 	            
 	            switch (option) {
 
-	            case "-e": // cliente envia ficheiros
-	                receiveFiles(inStream, "../pdfs/");
+	            case "-e":
+	                receiveFiles(inStream, outStream, "../pdfs/");
 	                break;
 
 	            case "-r": // cliente quer receber ficheiros
@@ -143,59 +149,80 @@ public class mySaudeServer{
 			
 		}
 
-		private void receiveFiles(ObjectInputStream objIn, String destFolder) {
-	    	try {
-	            // Number of files to receive
+	    private void receiveFiles(ObjectInputStream objIn, ObjectOutputStream objOut, String destFolder) {
+	        try {
 	            int numFiles = objIn.readInt();
 	            System.out.println("Receiving " + numFiles + " file(s).");
-	            
-	            // receiver
-	            
-	            String receiver = objIn.readUTF();
-	            
 
-	            // Append "sim" to destination folder
+	            String receiver = objIn.readUTF();
 	            destFolder += receiver;
 
-	            // Check if the folder exists
 	            File folder = new File(destFolder);
-	            if (!folder.exists()) {
-	                if (folder.mkdirs()) {
-	                    System.out.println("Destination folder created: " + destFolder);
-	                } else {
-	                    System.out.println("Failed to create destination folder.");
-	                    return;
-	                }
-	            } else if (!folder.isDirectory()) {
-	                System.out.println("Path exists but is not a directory.");
+
+	           
+	            if (!folder.exists() || !folder.isDirectory()) {
+	                System.out.println("Erro: diretoria do utilizador '" + receiver + "' não existe no servidor.");
+
+	                objOut.writeObject(NO_DIRECTORY);
+	                objOut.flush();
 	                return;
 	            }
+
 	            
-
-	            // Receive each file
+	            objOut.writeObject(OK);
+	            objOut.flush();
+	            
 	            for (int i = 0; i < numFiles; i++) {
-	                // Receive filename
+
 	                String fileName = (String) objIn.readObject();
-	                // Receive file content as byte[]
-	                byte[] fileBytes = (byte[]) objIn.readObject();
 
-	                String destPath = destFolder + "/" + fileName;
-
-	                File file = new File(destPath);
-		            if (file.exists()) {
-	                    System.out.println("File already exists at: " + destPath);
+	                
+	                if (fileName.equals(FILE_NOT_FOUND_FLAG)) {
+	                    String originalPath = (String) objIn.readObject();
+	                    System.out.println("Erro: ficheiro não existe do lado do cliente: " + originalPath);
 	                    continue;
-		            }
-	                // Save file to disk
-	                try (FileOutputStream fos = new FileOutputStream(destPath)) {
-	                    fos.write(fileBytes);
 	                }
 
-	                System.out.println("File received (" + fileBytes.length + " bytes) at " + destPath);
+	                long fileSize = objIn.readLong();
+
+	                String destPath = destFolder + "/" + fileName;
+	                File file = new File(destPath);
+
+	                
+	                if (file.exists()) {
+	                    System.out.println("Erro: ficheiro já existe no servidor: " + fileName);
+
+	                    objOut.writeObject(SERVER_FILE_EXISTS);
+	                    objOut.flush();
+	                    continue;
+	                }
+
+	               
+	                objOut.writeObject(OK_TO_SEND);
+	                objOut.flush();
+
+	             
+	                try (FileOutputStream fos = new FileOutputStream(file)) {
+	                    byte[] buffer = new byte[8192];
+	                    long remaining = fileSize;
+
+	                    while (remaining > 0) {
+	                        int bytesRead = objIn.read(buffer, 0, (int)Math.min(buffer.length, remaining));
+
+	                        if (bytesRead == -1) {
+	                            throw new EOFException("Fim inesperado ao receber ficheiro " + fileName);
+	                        }
+
+	                        fos.write(buffer, 0, bytesRead);
+	                        remaining -= bytesRead;
+	                    }
+	                }
+
+	                System.out.println("Ficheiro recebido com sucesso: " + destPath);
 	            }
 
 	        } catch (EOFException e) {
-	            System.err.println("The client tried to send files but none of them existed or there was no receiver.");
+	            System.err.println("Erro: fim inesperado da comunicação.");
 	        } catch (IOException | ClassNotFoundException e) {
 	            System.err.println("Error receiving files: " + e.getMessage());
 	            e.printStackTrace();
