@@ -305,7 +305,7 @@ public class mySaude {
 
 	        // enviar ficheiros
 	        for (String path : paths) {
-	        	File file = new File("../pdfs/" + client.username + "/" + path.trim());
+	        	File file = new File(path.trim());
 	        	
 	            if (!file.exists() || !file.isFile()) {
 	                System.out.println("Erro: ficheiro não existe do lado do cliente: " + path.trim());
@@ -369,13 +369,14 @@ public class mySaude {
 	        client.objOut.writeUTF(client.username);
 	        client.objOut.flush();
 
-	        for (String fileName : requestedFiles) {
-	            client.objOut.writeObject(fileName.trim());
-	            client.objOut.flush();
-	        }
+	        for (String requested : requestedFiles) {
+	            String fileName = requested.trim();
 
-	        for (int i = 0; i < requestedFiles.length; i++) {
-	            String fileName = requestedFiles[i].trim();
+	            // enviar pedido de UM ficheiro
+	            client.objOut.writeObject(fileName);
+	            client.objOut.flush();
+
+	            // receber estado desse ficheiro
 	            String status = (String) client.objIn.readObject();
 
 	            if (status.equals(NO_DIRECTORY)) {
@@ -395,7 +396,7 @@ public class mySaude {
 
 	            long fileSize = client.objIn.readLong();
 
-	            File outFile = new File("../pdfs_recebidos/" + client.username + "/" + fileName);
+	            File outFile = new File("../eu/" + fileName);
 	            File parentDir = outFile.getParentFile();
 
 	            if (!parentDir.exists()) {
@@ -435,7 +436,6 @@ public class mySaude {
 	        e.printStackTrace();
 	    }
 	}
-
 	
 	private void closeClientResources() {
 	    try {

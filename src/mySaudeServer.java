@@ -108,11 +108,11 @@ public class mySaudeServer{
 	            switch (option) {
 
 	            case "-e":
-	                receiveFiles(inStream, outStream, "../pdfs/");
+	                receiveFiles(inStream, outStream, "../servidor/");
 	                break;
 
 	            case "-r":
-	                sendFiles(inStream, outStream, "../pdfs/");
+	                sendFiles(inStream, outStream, "../servidor/");
 	                break;
 
 	            default:
