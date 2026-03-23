@@ -12,6 +12,7 @@
 import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 
 import java.io.IOException;
@@ -28,6 +29,8 @@ public class mySaudeServer{
 	private static final String FILE_NOT_FOUND_FLAG = "__FILE_NOT_FOUND__";
 	private static final String SERVER_FILE_EXISTS = "SERVER_FILE_EXISTS";
 	private static final String OK_TO_SEND = "OK_TO_SEND";
+	private static final String CLIENT_FILE_EXISTS = "CLIENT_FILE_EXISTS";
+	private static final String FILE_INFO = "FILE_INFO";
 	
 	private int port;
     public ObjectOutputStream objOut;
@@ -108,8 +111,8 @@ public class mySaudeServer{
 	                receiveFiles(inStream, outStream, "../pdfs/");
 	                break;
 
-	            case "-r": // cliente quer receber ficheiros
-	                sendFiles(inStream);
+	            case "-r":
+	                sendFiles(inStream, outStream, "../pdfs/");
 	                break;
 
 	            default:
@@ -144,11 +147,74 @@ public class mySaudeServer{
 	        }
 	    }
 
-	    private void sendFiles(ObjectInputStream inStream) {
-			// TODO Auto-generated method stub
-			
-		}
+	    
+	    private void sendFiles(ObjectInputStream objIn, ObjectOutputStream objOut, String baseFolder) {
+	        try {
+	            int numFiles = objIn.readInt();
+	            String username = objIn.readUTF();
 
+	            File folder = new File(baseFolder + username);
+
+	            if (!folder.exists() || !folder.isDirectory()) {
+	                for (int i = 0; i < numFiles; i++) {
+	                    objIn.readObject();
+	                }
+
+	                for (int i = 0; i < numFiles; i++) {
+	                    objOut.writeObject(NO_DIRECTORY);
+	                    objOut.flush();
+	                }
+	                return;
+	            }
+
+	            for (int i = 0; i < numFiles; i++) {
+	                String fileName = (String) objIn.readObject();
+	                File file = new File(folder, fileName);
+
+	                if (!file.exists() || !file.isFile()) {
+	                    objOut.writeObject(FILE_NOT_FOUND_FLAG);
+	                    objOut.flush();
+	                    continue;
+	                }
+
+	                objOut.writeObject(FILE_INFO);
+	                objOut.flush();
+
+	                objOut.writeLong(file.length());
+	                objOut.flush();
+
+	                String clientResponse = (String) objIn.readObject();
+
+	                if (clientResponse.equals(CLIENT_FILE_EXISTS)) {
+	                    System.out.println("Erro: ficheiro já existe do lado do cliente: " + fileName);
+	                    continue;
+	                }
+
+	                if (!clientResponse.equals(OK_TO_SEND)) {
+	                    System.out.println("Resposta inválida do cliente para o ficheiro: " + fileName);
+	                    continue;
+	                }
+
+	                try (FileInputStream fis = new FileInputStream(file)) {
+	                    byte[] buffer = new byte[8192];
+	                    int bytesRead;
+
+	                    while ((bytesRead = fis.read(buffer)) != -1) {
+	                        objOut.write(buffer, 0, bytesRead);
+	                    }
+	                    objOut.flush();
+	                }
+
+	                System.out.println("Ficheiro enviado com sucesso: " + file.getAbsolutePath());
+	            }
+
+	        } catch (IOException | ClassNotFoundException e) {
+	            System.err.println("Error sending files: " + e.getMessage());
+	            e.printStackTrace();
+	        }
+	    }
+	    
+	    
 	    private void receiveFiles(ObjectInputStream objIn, ObjectOutputStream objOut, String destFolder) {
 	        try {
 	            int numFiles = objIn.readInt();

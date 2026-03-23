@@ -281,6 +281,20 @@ public class mySaude {
 	    }
 	}
 	
+	public static boolean verifyFileExists(File file, String path) throws IOException{
+		if (!file.exists() || !file.isFile()) {
+			                System.out.println("Erro: ficheiro não existe do lado do cliente: " + path.trim());
+		
+			                client.objOut.writeObject(FILE_NOT_FOUND_FLAG);
+			                client.objOut.writeObject(path.trim());
+			                client.objOut.flush();
+			                return true;
+			            }
+		return false;
+	}
+	
+
+
 	
 	public void sendFiles(String filePaths, String receiver) {
 	    if (client.sock == null || client.objOut == null || client.objIn == null) {
@@ -315,16 +329,10 @@ public class mySaude {
 	        // fase 2: enviar ficheiros
 	        for (String path : paths) {
 	        	File file = new File("../pdfs/" + client.username + "/" + path.trim());
-	        	
-	            if (!file.exists() || !file.isFile()) {
-	                System.out.println("Erro: ficheiro não existe do lado do cliente: " + path.trim());
-
-	                client.objOut.writeObject(FILE_NOT_FOUND_FLAG);
-	                client.objOut.writeObject(path.trim());
-	                client.objOut.flush();
-	                continue;
-	            }
-
+	        
+	            if(verifyFileExists(file, path)){
+						continue;
+						}
 	            // enviar metadados do ficheiro
 	            client.objOut.writeObject(file.getName());
 	            client.objOut.writeLong(file.length());
