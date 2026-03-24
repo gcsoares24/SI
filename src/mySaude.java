@@ -479,7 +479,7 @@ public class mySaude {
 			aesCipher.init(Cipher.ENCRYPT_MODE, aesKey);
 			
 			try (FileInputStream fis = new FileInputStream(inputFile);
-				 FileOutputStream fos = new FileOutputStream(path + ".encrypted")) {
+				 FileOutputStream fos = new FileOutputStream(path + ".cifrado")) {
 				byte[] buffer = new byte[8192];
 				int read;
 				while ((read = fis.read(buffer)) > 0) {
@@ -492,10 +492,10 @@ public class mySaude {
 			rsaCipher.init(Cipher.WRAP_MODE, publicKey);
 			byte[] wrappedKey = rsaCipher.wrap(aesKey);
 
-			try (FileOutputStream fos = new FileOutputStream(path + ".key." + targetUser)) {
+			try (FileOutputStream fos = new FileOutputStream(path + ".chave." + targetUser)) {
 				fos.write(wrappedKey);
 			}
-			System.out.println("File encrypted: " + path + ".encrypted");
+			System.out.println("File encrypted: " + path + ".cifrado");
 		}
 	} catch (Exception e) {
 		System.err.println("Encryption error: " + e.getMessage());
@@ -513,8 +513,8 @@ public class mySaude {
 		PrivateKey privateKey = (PrivateKey) ks.getKey(this.username, this.password.toCharArray());
 
 		for (String path : paths) {
-			String baseName = path.replace(".encrypted", "");
-			File keyFile = new File(baseName + ".key." + this.username);
+			String baseName = path.replace(".cifrado", "");
+			File keyFile = new File(baseName + ".chave." + this.username);
 			
 			if (!keyFile.exists()) {
 				System.err.println("Error: Key file not found for " + path);
@@ -534,7 +534,7 @@ public class mySaude {
 			aesCipher.init(Cipher.DECRYPT_MODE, aesKey);
 
 			try (FileInputStream fis = new FileInputStream(path);
-				FileOutputStream fos = new FileOutputStream(baseName.replace(".pdf", "_decrypted.pdf"))){
+				FileOutputStream fos = new FileOutputStream(baseName + ".decifrado")){
 				byte[] buffer = new byte[8192];
 				int read;
 				while ((read = fis.read(buffer)) > 0) {
