@@ -534,7 +534,7 @@ public class mySaude {
 			aesCipher.init(Cipher.DECRYPT_MODE, aesKey);
 
 			try (FileInputStream fis = new FileInputStream(path);
-				FileOutputStream fos = new FileOutputStream(baseName + ".decifrado")){
+				FileOutputStream fos = new FileOutputStream(baseName)){
 				byte[] buffer = new byte[8192];
 				int read;
 				while ((read = fis.read(buffer)) > 0) {
