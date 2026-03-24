@@ -1,6 +1,6 @@
 #!/bin/bash
 # rodem isto assim: ./create_keystore.sh username password
-# só para facilitar e ser auto
+
 USERNAME="$1"
 PASSWORD="$2"
 
@@ -10,6 +10,7 @@ if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ]; then
 fi
 
 KEYSTORE_FILE="keystore.$USERNAME"
+CERT_FILE="$USERNAME.cer"
 
 # Generate keystore automatically
 keytool -genkeypair \
@@ -27,3 +28,14 @@ Lisbon
 PT
 yes
 EOF
+
+# Export certificate
+keytool -exportcert \
+    -alias "$USERNAME" \
+    -keystore "$KEYSTORE_FILE" \
+    -file "$CERT_FILE" \
+    -storepass "$PASSWORD" \
+    -rfc
+
+echo "Keystore criada: $KEYSTORE_FILE"
+echo "Certificado exportado: $CERT_FILE"

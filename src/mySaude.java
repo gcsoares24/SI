@@ -452,7 +452,7 @@ public class mySaude {
 	String[] paths = filePaths.split(";");
 	try {
 		KeyStore ks = KeyStore.getInstance("JKS");
-		try (FileInputStream fis = new FileInputStream("keystore/keystore." + this.username)) {
+		try (FileInputStream fis = new FileInputStream("../keystore/keystore." + this.username)) {
 			ks.load(fis, this.password.toCharArray());
 		}
 
@@ -506,7 +506,7 @@ public class mySaude {
 	String[] paths = filePaths.split(";");
 	try {
 		KeyStore ks = KeyStore.getInstance("JKS");
-		try (FileInputStream fis = new FileInputStream("keystore/keystore." + this.username)) {
+		try (FileInputStream fis = new FileInputStream("../keystore/keystore." + this.username)) {
 			ks.load(fis, this.password.toCharArray());
 		}
 
