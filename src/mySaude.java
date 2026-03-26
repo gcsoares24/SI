@@ -33,6 +33,7 @@ import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.Certificate;
+import java.security.Signature;
 
 
 public class mySaude {
@@ -155,9 +156,14 @@ public class mySaude {
 	        // 2C. Assinatura Digital
 	        case "-a":
 	            System.out.println("-a: Assina ficheiros localmente.");
+				client.signFiles(value);
 	            break;
 	        case "-v":
 	            System.out.println("-v: Valida a assinatura de ficheiros.");
+				if(client.receiver == null) {
+	            	throw new EOFException("Falta o parametro -t com o username de quem assinou.");
+	            }
+	            client.verifySignatures(value, client.receiver);
 	            break;
 	
 	        // 2D. Operações Combinadas
@@ -458,7 +464,7 @@ public class mySaude {
 
 		Certificate cert = ks.getCertificate(targetUser);
 		if (cert == null) {
-			System.err.println("Error: Certificate for " + targetUser + " not found.");
+			System.err.println("Erro: Certificado para " + targetUser + " não encontrado.");
 			return;
 		}
 		PublicKey publicKey = cert.getPublicKey();
@@ -495,10 +501,10 @@ public class mySaude {
 			try (FileOutputStream fos = new FileOutputStream(path + ".chave." + targetUser)) {
 				fos.write(wrappedKey);
 			}
-			System.out.println("File encrypted: " + path + ".cifrado");
+			System.out.println("Ficheiro encriptado: " + path + ".cifrado");
 		}
 	} catch (Exception e) {
-		System.err.println("Encryption error: " + e.getMessage());
+		System.err.println("Erro na encriptação: " + e.getMessage());
 	}
 	}
 
@@ -517,7 +523,7 @@ public class mySaude {
 			File keyFile = new File(baseName + ".chave." + this.username);
 			
 			if (!keyFile.exists()) {
-				System.err.println("Error: Key file not found for " + path);
+				System.err.println("Erro: Ficheiro de chave não encontrado para " + path);
 				continue;
 			}
 
@@ -542,13 +548,105 @@ public class mySaude {
 				}
 				fos.write(aesCipher.doFinal());
 			}
-			System.out.println("File decrypted successfully.");
+			System.out.println("Ficheiro desencriptado com sucesso.");
 		}
 	} catch (Exception e) {
-		System.err.println("Decryption error: " + e.getMessage());
+		System.err.println("Erro na desencriptação: " + e.getMessage());
 	}
 
 }
+	public void signFiles(String filePaths) {
+		String[] paths = filePaths.split(";");
+		try {
+			KeyStore ks = KeyStore.getInstance("JKS");
+			try (FileInputStream fis = new FileInputStream("../keystore/keystore." + this.username)) {
+				ks.load(fis, this.password.toCharArray());
+			}
+
+			PrivateKey privateKey = (PrivateKey) ks.getKey(this.username, this.password.toCharArray());
+
+			for (String path : paths) {
+				File inputFile = new File(path.trim());
+				if (!inputFile.exists()) {
+					System.err.println("ERRO: O ficheiro '" + path.trim() + "' não foi encontrado!");
+					continue;
+				}
+
+				Signature signature = Signature.getInstance("SHA256withRSA");
+				signature.initSign(privateKey);
+
+				try (FileInputStream fis = new FileInputStream(inputFile)) {
+					byte[] buffer = new byte[8192];
+					int read;
+					while ((read = fis.read(buffer)) > 0) {
+						signature.update(buffer, 0, read);
+					}
+				}
+
+				byte[] digitalSignature = signature.sign();
+
+				String sigFileName = path.trim() + ".assinatura." + this.username;
+				try (FileOutputStream fos = new FileOutputStream(sigFileName)) {
+					fos.write(digitalSignature);
+				}
+				System.out.println("Ficheiro assinado: " + sigFileName);
+			}
+		} catch (Exception e) {
+			System.err.println("Erro na assinatura: " + e.getMessage());
+		}
+	}
+
+	public void verifySignatures(String filePaths, String targetUser) {
+		String[] paths = filePaths.split(";");
+		try {
+			KeyStore ks = KeyStore.getInstance("JKS");
+			try (FileInputStream fis = new FileInputStream("../keystore/keystore." + this.username)) {
+				ks.load(fis, this.password.toCharArray());
+			}
+
+			Certificate cert = ks.getCertificate(targetUser);
+			if (cert == null) {
+				System.err.println("Erro: Certificado do utilizador '" + targetUser + "' não encontrado na keystore.");
+				return;
+			}
+			PublicKey publicKey = cert.getPublicKey();
+
+			for (String path : paths) {
+				File inputFile = new File(path.trim());
+				File sigFile = new File(path.trim() + ".assinatura." + targetUser);
+
+				if (!inputFile.exists() || !sigFile.exists()) {
+					System.err.println("Erro: O ficheiro ou a sua assinatura não foram encontrados (" + path.trim() + ")");
+					continue;
+				}
+
+				byte[] sigBytes = new byte[(int) sigFile.length()];
+				try (FileInputStream fis = new FileInputStream(sigFile)) {
+					fis.read(sigBytes);
+				}
+
+				Signature signature = Signature.getInstance("SHA256withRSA");
+				signature.initVerify(publicKey);
+
+				try (FileInputStream fis = new FileInputStream(inputFile)) {
+					byte[] buffer = new byte[8192];
+					int read;
+					while ((read = fis.read(buffer)) > 0) {
+						signature.update(buffer, 0, read);
+					}
+				}
+
+				boolean isCorrect = signature.verify(sigBytes);
+				if (isCorrect) {
+					System.out.println("-> Assinatura VALIDA para o ficheiro: " + path.trim());
+				} else {
+					System.out.println("-> Assinatura INVALIDA para o ficheiro: " + path.trim());
+				}
+			}
+		} catch (Exception e) {
+			System.err.println("Erro na validacao da assinatura: " + e.getMessage());
+		}
+	}
 	
 	private void closeClientResources() {
 	    try {
