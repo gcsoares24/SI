@@ -169,6 +169,7 @@ public class mySaude {
 	}
 	
     private static void switchCase(String option, String value) throws EOFException {
+    	String filesToSend;
     	switch (option) {
 	        // 2A. Transferência de Ficheiros
 	        case "-e":
@@ -213,7 +214,7 @@ public class mySaude {
 	                throw new EOFException("There is no -t (receiver).");
 	            }
 
-	            String filesToSend = client.encryptFiles(value, client.receiver);
+	            filesToSend = client.encryptFiles(value, client.receiver);
 
 	            if (filesToSend.isEmpty()) {
 	                System.out.println("No files to send.");
@@ -231,16 +232,18 @@ public class mySaude {
 	            client.decryptFiles(filesToDecrypt);
 	            break;
 	        case "-ae":
-
-		    	String newPaths = client.signFiles(value);
-		        // 5) enviar para o servidor
-		        client.sendFiles(newPaths, client.receiver);
+	        	filesToSend = client.signFiles(value);
+		    	
+		        client.sendFiles(filesToSend, client.receiver);
+		        break;
 	        case "-rv":
+	            String filesToVerify  = client.receiveFiles(value);
+	            
+	            client.verifySignatures(filesToVerify, client.receiver);
 	            System.out.println("-rv: Recebe ficheiros e valida assinatura.");
 	            break;
 	        case "-ace":
-	            System.out.println("-ace: Assina, cifra e envia ficheiros (Envelope Seguro).");
-	            break;
+	        	client.signEncryptSend(value, client.receiver);
 	        case "-rdv":
 	            System.out.println("-rdv: Recebe, decifra e valida assinatura de ficheiros.");
 	            break;
@@ -480,6 +483,14 @@ public class mySaude {
 	            if (!parentDir.exists()) {
 	                parentDir.mkdirs();
 	            }
+	            
+	            //guardar so cifrados, recebidos
+	            if (fileName.contains(".cifrado") || fileName.contains(".assinado")) {
+	                if (!receivedFiles.isEmpty()) {
+	                    receivedFiles += ";";
+	                }
+	                receivedFiles += "../eu/" + fileName;
+	            }
 
 	            if (outFile.exists()) {
 	                System.out.println("Erro: ficheiro já existe do lado do cliente: " + fileName);
@@ -509,13 +520,7 @@ public class mySaude {
 
 	            System.out.println("Ficheiro recebido com sucesso: " + fileName);
 
-	            //guardar so cifrados
-	            if (fileName.contains(".cifrado")) {
-	                if (!receivedFiles.isEmpty()) {
-	                    receivedFiles += ";";
-	                }
-	                receivedFiles += "../eu/" + fileName;
-	            }
+	            
 	        }
 
 	    } catch (IOException | ClassNotFoundException e) {
@@ -686,9 +691,8 @@ public class mySaude {
 
 	            System.out.println("Ficheiro assinado: " + sigFileName);
 
-	            // 🔥 append both paths
 	            if (result.length() > 0) result.append(";");
-	            result.append(trimmedPath).append(";").append(sigFileName);
+	            result.append(sigFileName).append(";").append(trimmedPath);
 	        }
 
 	    } catch (Exception e) {
@@ -748,6 +752,55 @@ public class mySaude {
 		} catch (Exception e) {
 			System.err.println("Erro na validacao da assinatura: " + e.getMessage());
 		}
+	}
+	
+	public void signEncryptSend(String filePaths, String targetUser) {
+	    String[] paths = filePaths.split(";");
+	    StringBuilder filesToSend = new StringBuilder();
+
+	    for (String path : paths) {
+	        String trimmedPath = path.trim();
+
+	        // 1) assinar
+	        String signedResult = client.signFiles(trimmedPath);
+	        if (signedResult == null || signedResult.isEmpty()) {
+	            continue;
+	        }
+
+	        // signFiles devolve: assinatura;ficheiroOriginal
+	        String[] signedParts = signedResult.split(";");
+	        String signatureFile = signedParts[0].trim();
+	        String originalFile = signedParts[1].trim();
+
+	        // 2) cifrar apenas o ficheiro original
+	        String encryptedResult = client.encryptFiles(originalFile, targetUser);
+	        if (encryptedResult == null || encryptedResult.isEmpty()) {
+	            continue;
+	        }
+
+	        // encryptFiles devolve: envelope;chave
+	        String[] encryptedParts = encryptedResult.split(";");
+	        String encryptedFile = encryptedParts[0].trim();
+	        String keyFile = encryptedParts[1].trim();
+
+	        // 3) montar ordem: assinatura ; pdfCifrado ; chave
+	        if (filesToSend.length() > 0) {
+	            filesToSend.append(";");
+	        }
+
+	        filesToSend.append(signatureFile)
+	                   .append(";")
+	                   .append(encryptedFile)
+	                   .append(";")
+	                   .append(keyFile);
+	    }
+
+	    if (filesToSend.length() == 0) {
+	        System.out.println("Nenhum ficheiro para enviar.");
+	        return;
+	    }
+
+	    client.sendFiles(filesToSend.toString(), targetUser);
 	}
 	
 	private void closeClientResources() {

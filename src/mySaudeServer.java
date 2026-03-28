@@ -231,9 +231,30 @@ public class mySaudeServer{
 	        }
 	    }
 	    
+	    private boolean fileExists(String filePath) {
+	        String[] types = {".cifrado", ".assinado", ".envelope"};
+
+	        // check original file
+	        File file = new File(filePath);
+	        if (file.exists()) {
+	            return true;
+	        }
+
+	        // check variations
+	        for (String type : types) {
+	            File variant = new File(filePath + type);
+	            if (variant.exists()) {
+	                return true;
+	            }
+	        }
+
+	        return false;
+	    }
 	    
 	    private void receiveFiles(ObjectInputStream objIn, ObjectOutputStream objOut, String destFolder) {
 	        try {
+	            boolean previousWasSignature = false;
+	        	
 	            int numFiles = objIn.readInt();
 	            System.out.println("Receiving " + numFiles + " file(s).");
 
@@ -270,16 +291,33 @@ public class mySaudeServer{
 	                long fileSize = objIn.readLong();
 
 	                String baseName = getBaseName(fileName);
-	                destPath = destFolder + "/" + baseName;
+	                destPath = destFolder + "/" + baseName;	
 	                file = new File(destPath);
-	                if (file.exists()) {
-	                    System.out.println("Erro: ficheiro já existe no servidor: " + fileName);
+	                if (fileExists(destPath)) {
+	                    System.out.println("Erro: O ficheiro " + fileName + ", alguma das suas variacoes, já existe no servidor");
 
 	                    objOut.writeObject(SERVER_FILE_EXISTS);
 	                    objOut.flush();
 	                    continue;
 	                }
 	                destPath = destFolder + "/" + fileName;
+	                
+	                if(previousWasSignature) {
+	                	if(fileName.contains(".cifrado")) {
+	                		System.out.println(destPath);
+	                		destPath = destPath.replace(".cifrado", ".envelope");
+	                		System.out.println(destPath);
+	                	}else if(!fileName.contains(".chave")){
+		                	destPath += ".assinado";
+		                	previousWasSignature = false;
+	                	}
+	                }
+	                
+	                if(fileName.contains(".assinatura")) {
+	                	previousWasSignature = true;
+	                }
+	                
+	                
 	                file = new File(destPath);
 
 	               
