@@ -163,9 +163,15 @@ public class mySaude {
 	        // 2D. Operações Combinadas
 	        case "-ce":
 	            System.out.println("-ce: Cifra e envia ficheiros para o servidor.");
+	            if(client.receiver == null) {
+	                throw new EOFException("There is no -t (receiver).");
+	            }
+	            client.encryptAndSendFiles(value, client.receiver);
 	            break;
+
 	        case "-rd":
 	            System.out.println("-rd: Recebe e decifra ficheiros do servidor.");
+	            client.receiveAndDecryptFiles(value);
 	            break;
 	        case "-ae":
 	            System.out.println("-ae: Assina e envia ficheiros.");
@@ -479,7 +485,7 @@ public class mySaude {
 			aesCipher.init(Cipher.ENCRYPT_MODE, aesKey);
 			
 			try (FileInputStream fis = new FileInputStream(inputFile);
-				 FileOutputStream fos = new FileOutputStream(path + ".encrypted")) {
+				 FileOutputStream fos = new FileOutputStream(path + ".cifrado")) {
 				byte[] buffer = new byte[8192];
 				int read;
 				while ((read = fis.read(buffer)) > 0) {
@@ -492,10 +498,10 @@ public class mySaude {
 			rsaCipher.init(Cipher.WRAP_MODE, publicKey);
 			byte[] wrappedKey = rsaCipher.wrap(aesKey);
 
-			try (FileOutputStream fos = new FileOutputStream(path + ".key." + targetUser)) {
+			try (FileOutputStream fos = new FileOutputStream(path + ".chave." + targetUser)) {
 				fos.write(wrappedKey);
 			}
-			System.out.println("File encrypted: " + path + ".encrypted");
+			System.out.println("File encrypted: " + path + ".cifrado");
 		}
 	} catch (Exception e) {
 		System.err.println("Encryption error: " + e.getMessage());
@@ -513,8 +519,8 @@ public class mySaude {
 		PrivateKey privateKey = (PrivateKey) ks.getKey(this.username, this.password.toCharArray());
 
 		for (String path : paths) {
-			String baseName = path.replace(".encrypted", "");
-			File keyFile = new File(baseName + ".key." + this.username);
+			String baseName = path.replace(".cifrado", "");
+			File keyFile = new File(baseName + ".chave." + this.username);
 			
 			if (!keyFile.exists()) {
 				System.err.println("Error: Key file not found for " + path);
@@ -549,6 +555,107 @@ public class mySaude {
 	}
 
 }
+	
+	public void encryptAndSendFiles(String filePaths, String targetUser) {
+	    String[] paths = filePaths.split(";");
+
+	    // 1. Cifrar primeiro
+	    encryptFiles(filePaths, targetUser);
+
+	    // 2. Construir lista dos ficheiros a enviar:
+	    //    original.encrypted e original.key.targetUser
+	    StringBuilder encryptedFilesToSend = new StringBuilder();
+
+	    for (String path : paths) {
+	        String trimmedPath = path.trim();
+
+	        File encryptedFile = new File(trimmedPath + ".cifrado");
+	        File keyFile = new File(trimmedPath + ".chave." + targetUser);
+
+	        if (!encryptedFile.exists()) {
+	            System.err.println("Error: encrypted file not found: " + encryptedFile.getPath());
+	            continue;
+	        }
+
+	        if (!keyFile.exists()) {
+	            System.err.println("Error: key file not found: " + keyFile.getPath());
+	            continue;
+	        }
+
+	        if (encryptedFilesToSend.length() > 0) {
+	            encryptedFilesToSend.append(";");
+	        }
+
+	        encryptedFilesToSend.append(encryptedFile.getPath());
+	        encryptedFilesToSend.append(";");
+	        encryptedFilesToSend.append(keyFile.getPath());
+	    }
+
+	    if (encryptedFilesToSend.length() == 0) {
+	        System.err.println("No encrypted files available to send.");
+	        return;
+	    }
+
+	    // 3. Enviar os ficheiros gerados
+	    sendFiles(encryptedFilesToSend.toString(), targetUser);
+	}
+	
+	
+	public void receiveAndDecryptFiles(String filePaths) {
+	    String[] paths = filePaths.split(";");
+
+	    // 1. Construir lista do que vai ser pedido ao servidor:
+	    //    original.encrypted e original.key.username
+	    StringBuilder filesToReceive = new StringBuilder();
+
+	    for (String path : paths) {
+	        String trimmedPath = path.trim();
+
+	        if (filesToReceive.length() > 0) {
+	            filesToReceive.append(";");
+	        }
+
+	        filesToReceive.append(trimmedPath).append(".cifrado");
+	        filesToReceive.append(";");
+	        filesToReceive.append(trimmedPath).append(".chave.").append(this.username);
+	    }
+
+	    // 2. Receber os ficheiros
+	    receiveFiles(filesToReceive.toString());
+
+	    // 3. Decifrar os .encrypted recebidos
+	    StringBuilder encryptedFilesToDecrypt = new StringBuilder();
+
+	    for (String path : paths) {
+	        String trimmedPath = path.trim();
+
+	        File encryptedFile = new File("../eu/" + trimmedPath + ".cifrado");
+	        File keyFile = new File("../eu/" + trimmedPath + ".chave." + this.username);
+
+	        if (!encryptedFile.exists()) {
+	            System.err.println("Error: encrypted file not received: " + encryptedFile.getPath());
+	            continue;
+	        }
+
+	        if (!keyFile.exists()) {
+	            System.err.println("Error: key file not received: " + keyFile.getPath());
+	            continue;
+	        }
+
+	        if (encryptedFilesToDecrypt.length() > 0) {
+	            encryptedFilesToDecrypt.append(";");
+	        }
+
+	        encryptedFilesToDecrypt.append("../eu/").append(trimmedPath).append(".cifrado");
+	    }
+
+	    if (encryptedFilesToDecrypt.length() == 0) {
+	        System.err.println("No encrypted files available to decrypt.");
+	        return;
+	    }
+
+	    decryptFiles(encryptedFilesToDecrypt.toString());
+	}
 	
 	private void closeClientResources() {
 	    try {
