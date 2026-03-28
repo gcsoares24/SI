@@ -220,8 +220,10 @@ public class mySaude {
 	            client.receiveAndDecryptFiles(value);
 	            break;
 	        case "-ae":
-	            System.out.println("-ae: Assina e envia ficheiros.");
-	            break;
+
+		    	String newPaths = client.signFiles(value);
+		        // 5) enviar para o servidor
+		        client.sendFiles(newPaths, client.receiver);
 	        case "-rv":
 	            System.out.println("-rv: Recebe ficheiros e valida assinatura.");
 	            break;
@@ -604,45 +606,57 @@ public class mySaude {
 	}
 
 }
-	public void signFiles(String filePaths) {
-		String[] paths = filePaths.split(";");
-		try {
-			KeyStore ks = KeyStore.getInstance("JKS");
-			try (FileInputStream fis = new FileInputStream("../keystore/keystore." + this.username)) {
-				ks.load(fis, this.password.toCharArray());
-			}
+	public String signFiles(String filePaths) {
+	    String[] paths = filePaths.split(";");
+	    StringBuilder result = new StringBuilder();
 
-			PrivateKey privateKey = (PrivateKey) ks.getKey(this.username, this.password.toCharArray());
+	    try {
+	        KeyStore ks = KeyStore.getInstance("JKS");
+	        try (FileInputStream fis = new FileInputStream("../keystore/keystore." + this.username)) {
+	            ks.load(fis, this.password.toCharArray());
+	        }
 
-			for (String path : paths) {
-				File inputFile = new File(path.trim());
-				if (!inputFile.exists()) {
-					System.err.println("ERRO: O ficheiro '" + path.trim() + "' não foi encontrado!");
-					continue;
-				}
+	        PrivateKey privateKey = (PrivateKey) ks.getKey(this.username, this.password.toCharArray());
 
-				Signature signature = Signature.getInstance("SHA256withRSA");
-				signature.initSign(privateKey);
+	        for (String path : paths) {
+	            String trimmedPath = path.trim();
+	            File inputFile = new File(trimmedPath);
 
-				try (FileInputStream fis = new FileInputStream(inputFile)) {
-					byte[] buffer = new byte[8192];
-					int read;
-					while ((read = fis.read(buffer)) > 0) {
-						signature.update(buffer, 0, read);
-					}
-				}
+	            if (!inputFile.exists()) {
+	                System.err.println("ERRO: O ficheiro '" + trimmedPath + "' não foi encontrado!");
+	                continue;
+	            }
 
-				byte[] digitalSignature = signature.sign();
+	            Signature signature = Signature.getInstance("SHA256withRSA");
+	            signature.initSign(privateKey);
 
-				String sigFileName = path.trim() + ".assinatura." + this.username;
-				try (FileOutputStream fos = new FileOutputStream(sigFileName)) {
-					fos.write(digitalSignature);
-				}
-				System.out.println("Ficheiro assinado: " + sigFileName);
-			}
-		} catch (Exception e) {
-			System.err.println("Erro na assinatura: " + e.getMessage());
-		}
+	            try (FileInputStream fis = new FileInputStream(inputFile)) {
+	                byte[] buffer = new byte[8192];
+	                int read;
+	                while ((read = fis.read(buffer)) > 0) {
+	                    signature.update(buffer, 0, read);
+	                }
+	            }
+
+	            byte[] digitalSignature = signature.sign();
+
+	            String sigFileName = trimmedPath + ".assinatura." + this.username;
+	            try (FileOutputStream fos = new FileOutputStream(sigFileName)) {
+	                fos.write(digitalSignature);
+	            }
+
+	            System.out.println("Ficheiro assinado: " + sigFileName);
+
+	            // 🔥 append both paths
+	            if (result.length() > 0) result.append(";");
+	            result.append(trimmedPath).append(";").append(sigFileName);
+	        }
+
+	    } catch (Exception e) {
+	        System.err.println("Erro na assinatura: " + e.getMessage());
+	    }
+
+	    return result.toString();
 	}
 
 	public void verifySignatures(String filePaths, String targetUser) {
@@ -797,6 +811,7 @@ public class mySaude {
 
 	    decryptFiles(encryptedFilesToDecrypt.toString());
 	}
+	
 	
 	private void closeClientResources() {
 	    try {

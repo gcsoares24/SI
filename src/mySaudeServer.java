@@ -107,19 +107,23 @@ public class mySaudeServer{
 	            
 	            switch (option) {
 
-	            case "-e":
-	            case "-ce":
-	                receiveFiles(inStream, outStream, "../servidor/");
-	                break;
-
-	            case "-r":
-	            case "-rd":
-	                sendFiles(inStream, outStream, "../servidor/");
-	                break;
-
-	            default:
-	                System.out.println("Unknown operation: " + option);
-	        }
+		            case "-e":
+		            case "-ce":
+		            case "-ae":
+		            case "-ace":
+		                receiveFiles(inStream, outStream, "../servidor/");
+		                break;
+	
+		            case "-r":
+		            case "-rd":
+		            case "-rv":
+		            case "-rdv":
+		                sendFiles(inStream, outStream, "../servidor/");
+		                break;
+	
+		            default:
+		                System.out.println("Unknown operation: " + option);
+	            }
 	            
 	            // --- LOGIN ---
 //	            String user = (String) inStream.readObject();
