@@ -244,8 +244,10 @@ public class mySaude {
 	            break;
 	        case "-ace":
 	        	client.signEncryptSend(value, client.receiver);
+	            break;
 	        case "-rdv":
 	            System.out.println("-rdv: Recebe, decifra e valida assinatura de ficheiros.");
+	        	client.receiveDecryptVerify(value, client.receiver);
 	            break;
 	
 			default:
@@ -476,7 +478,6 @@ public class mySaude {
 	            }
 
 	            long fileSize = client.objIn.readLong();
-
 	            File outFile = new File("../eu/" + fileName);
 	            File parentDir = outFile.getParentFile();
 
@@ -485,7 +486,7 @@ public class mySaude {
 	            }
 	            
 	            //guardar so cifrados, recebidos
-	            if (fileName.contains(".cifrado") || fileName.contains(".assinado")) {
+	            if (fileName.contains(".cifrado") || fileName.contains(".assinado") || fileName.contains(".envelope")) {
 	                if (!receivedFiles.isEmpty()) {
 	                    receivedFiles += ";";
 	                }
@@ -614,6 +615,7 @@ public class mySaude {
 
 	        for (String path : paths) {
 	            String baseName = path.replace(".cifrado", "");
+	            baseName = baseName.replace(".envelope", "");
 	            File keyFile = new File(baseName + ".chave." + this.username);
 
 	            if (!keyFile.exists()) {
@@ -801,6 +803,52 @@ public class mySaude {
 	    }
 
 	    client.sendFiles(filesToSend.toString(), targetUser);
+	}
+	
+	public void receiveDecryptVerify(String filePaths, String signedUser) {
+	    String[] originalFiles = filePaths.split(";");
+	    StringBuilder filesToRequest = new StringBuilder();
+
+	    for (String file : originalFiles) {
+	        String base = file.trim();
+
+	        if (filesToRequest.length() > 0) {
+	            filesToRequest.append(";");
+	        }
+
+	        filesToRequest.append(base).append(".envelope")
+	                      .append(";")
+	                      .append(base).append(".chave.").append(this.username)
+	                      .append(";")
+	                      .append(base).append(".assinatura.").append(signedUser);
+	    }
+
+	    String received = client.receiveFiles(filesToRequest.toString());
+
+	    if (received == null || received.isEmpty()) {
+	        System.out.println("Nenhum ficheiro recebido.");
+	        return;
+	    }
+	    System.out.println(received);
+	    client.decryptFiles(received);
+
+	    StringBuilder filesToVerify = new StringBuilder();
+	    String[] receivedPaths = received.split(";");
+
+	    for (String path : receivedPaths) {
+	        String trimmed = path.trim();
+
+	        if (trimmed.endsWith(".envelope")) {
+	            String originalFile = trimmed.replace(".envelope", "");
+
+	            if (filesToVerify.length() > 0) {
+	                filesToVerify.append(";");
+	            }
+	            filesToVerify.append(originalFile);
+	        }
+	    }
+
+	    client.verifySignatures(filesToVerify.toString(), signedUser);
 	}
 	
 	private void closeClientResources() {
