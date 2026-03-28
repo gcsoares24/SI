@@ -148,7 +148,18 @@ public class mySaudeServer{
 	            e.printStackTrace();
 	        }
 	    }
-
+	    private String getBaseName(String fileName) {
+	        if (fileName.endsWith(".cifrado")) {
+	            return fileName.replace(".cifrado", "");
+	        }
+	        if (fileName.endsWith(".assinado")) {
+	            return fileName.replace(".assinado", "");
+	        }
+	        if (fileName.endsWith(".envelope")) {
+	            return fileName.replace(".envelope", "");
+	        }
+	        return fileName;
+	    }
 	    
 	    private void sendFiles(ObjectInputStream objIn, ObjectOutputStream objOut, String baseFolder) {
 	        try {
@@ -250,13 +261,13 @@ public class mySaudeServer{
 	                    System.out.println("Erro: ficheiro não existe do lado do cliente: " + originalPath);
 	                    continue;
 	                }
-
+	                File file;
+	                String destPath;
 	                long fileSize = objIn.readLong();
 
-	                String destPath = destFolder + "/" + fileName;
-	                File file = new File(destPath);
-
-	                
+	                String baseName = getBaseName(fileName);
+	                destPath = destFolder + "/" + baseName;
+	                file = new File(destPath);
 	                if (file.exists()) {
 	                    System.out.println("Erro: ficheiro já existe no servidor: " + fileName);
 
@@ -264,6 +275,8 @@ public class mySaudeServer{
 	                    objOut.flush();
 	                    continue;
 	                }
+	                destPath = destFolder + "/" + fileName;
+	                file = new File(destPath);
 
 	               
 	                objOut.writeObject(OK_TO_SEND);
