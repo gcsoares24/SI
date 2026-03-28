@@ -59,6 +59,18 @@ public class mySaude {
 		    "-ae", "-rv",
 		    "-ace", "-rdv"
 		);
+	
+	private static final Set<String> NEEDS_PASSWORD = Set.of(
+		    "-c", "-d", "-ce", "-rd", "-a", "-v", "-ae", "-rv", "-ace", "-rdv"
+		);
+
+	private static final Set<String> NEEDS_RECEIVER = Set.of(
+	    "-e", "-c", "-ce", "-v", "-ae", "-rv", "-ace", "-rdv"
+	);
+
+	private static final Set<String> NEEDS_SERVER = Set.of(
+	    "-e", "-r", "-ce", "-rd", "-ae", "-rv", "-ace", "-rdv"
+	);
 
 	private static String isOption(String currentFlag, String fallback) {
 	    if (OPTIONS.contains(currentFlag)) {
@@ -91,7 +103,7 @@ public class mySaude {
             if(option == null) {
                 throw new IllegalArgumentException("There is no option");
             }
-            
+            validateRequiredFlags(option);
             
             //sends only server type of operation
             if (SERVER_OPTIONS.contains(option)) {
@@ -125,10 +137,38 @@ public class mySaude {
 	     }
 
     }
-    
+	
+	private static void require(boolean condition, String message) {
+	    if (!condition) {
+	        throw new IllegalArgumentException(message);
+	    }
+	}
+	
+	private static void validateRequiredFlags(String option) {
+	    String base = "The option " + option + " requires ";
+
+	    // -u | user is always required
+	    require(client.username != null, base + "-u.");
+
+	    // -p | password required
+	    if (NEEDS_PASSWORD.contains(option)) {
+	        require(client.password != null, base + "-p.");
+	    }
+
+	    // -t |receiver required
+	    if (NEEDS_RECEIVER.contains(option)) {
+	        require(client.receiver != null, base + "-t.");
+	    }
+
+	    // -s | server connection required
+	    if (NEEDS_SERVER.contains(option)) {
+	        require(client.objOut != null && client.objIn != null,
+	                base + "connection to server (-s).");
+	    }
+	}
+	
     private static void switchCase(String option, String value) throws EOFException {
     	switch (option) {
-	
 	        // 2A. Transferência de Ficheiros
 	        case "-e":
 	            System.out.println("-e: Envia ficheiros para o servidor.");
