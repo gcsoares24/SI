@@ -597,7 +597,6 @@ public class mySaude {
 
 	public void decryptFiles(String filePaths) {
 	    String[] paths = filePaths.split(";");
-
 	    try {
 	        KeyStore ks = KeyStore.getInstance("JKS");
 	        try (FileInputStream fis = new FileInputStream("../keystore/keystore." + this.username)) {
@@ -606,36 +605,18 @@ public class mySaude {
 
 	        PrivateKey privateKey = (PrivateKey) ks.getKey(this.username, this.password.toCharArray());
 
-	        if (privateKey == null) {
-	            System.err.println("Error: private key for user '" + this.username + "' not found in keystore.");
-	            return;
-	        }
-
 	        for (String path : paths) {
-	            String trimmedPath = path.trim();
-
-	            if (!trimmedPath.endsWith(".cifrado")) {
-	                System.err.println("Error: file '" + trimmedPath + "' is not a .cifrado file.");
-	                continue;
-	            }
-
-	            File encryptedFile = new File(trimmedPath);
-	            if (!encryptedFile.exists() || !encryptedFile.isFile()) {
-	                System.err.println("Error: encrypted file '" + trimmedPath + "' not found.");
-	                continue;
-	            }
-
-	            String baseName = trimmedPath.substring(0, trimmedPath.length() - ".cifrado".length());
+	            String baseName = path.replace(".cifrado", "");
 	            File keyFile = new File(baseName + ".chave." + this.username);
 
-	            if (!keyFile.exists() || !keyFile.isFile()) {
-	                System.err.println("Error: key file '" + keyFile.getName() + "' not found for file '" + trimmedPath + "'.");
+	            if (!keyFile.exists()) {
+	                System.err.println("Erro: Ficheiro de chave não encontrado para " + path);
 	                continue;
 	            }
 
 	            byte[] wrappedKey = new byte[(int) keyFile.length()];
-	            try (DataInputStream dis = new DataInputStream(new FileInputStream(keyFile))) {
-	                dis.readFully(wrappedKey);
+	            try (FileInputStream fis = new FileInputStream(keyFile)) {
+	                fis.read(wrappedKey);
 	            }
 
 	            Cipher rsaCipher = Cipher.getInstance("RSA");
@@ -645,32 +626,22 @@ public class mySaude {
 	            Cipher aesCipher = Cipher.getInstance("AES");
 	            aesCipher.init(Cipher.DECRYPT_MODE, aesKey);
 
-	            try (FileInputStream fis = new FileInputStream(encryptedFile);
-	                 FileOutputStream fos = new FileOutputStream(baseName)) {
-
+	            try (FileInputStream fis = new FileInputStream(path);
+	                FileOutputStream fos = new FileOutputStream(baseName)){
 	                byte[] buffer = new byte[8192];
 	                int read;
-
 	                while ((read = fis.read(buffer)) > 0) {
-	                    byte[] output = aesCipher.update(buffer, 0, read);
-	                    if (output != null) {
-	                        fos.write(output);
-	                    }
+	                    fos.write(aesCipher.update(buffer, 0, read));
 	                }
-
-	                byte[] finalBytes = aesCipher.doFinal();
-	                if (finalBytes != null) {
-	                    fos.write(finalBytes);
-	                }
+	                fos.write(aesCipher.doFinal());
 	            }
-
-	            System.out.println("File decrypted successfully: " + baseName);
+	            System.out.println("Ficheiro desencriptado com sucesso.");
 	        }
-
 	    } catch (Exception e) {
-	        System.err.println("Decryption error: " + e.getMessage());
+	        System.err.println("Erro na desencriptação: " + e.getMessage());
 	    }
 	}
+	
 	public void signFiles(String filePaths) {
 		String[] paths = filePaths.split(";");
 		try {
