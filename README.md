@@ -1,3 +1,0 @@
-# mySaude - Projeto SI
-
-## 
