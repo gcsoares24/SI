@@ -74,41 +74,45 @@ Legenda:
 
 
 Enviar ficheiros:
-java mySaude -s <ip>:<porto> -u <user> -e <path_ficheiro> -t <destinatario>
+java mySaude -s <ip>:<porto> -u <user> -e <path_ficheiros> -t <destinatario>
 
 Receber ficheiros:
-java mySaude -s <ip>:<porto> -u <user> -r <nome_ficheiro>
+java mySaude -s <ip>:<porto> -u <user> -r <nome_ficheiros>
 
 Cifrar:
-java mySaude -u <user> -p <password> -c <path_ficheiro> -t <destinatario>
+java mySaude -u <user> -p <password> -c <path_ficheiros> -t <destinatario>
 
 Decifrar:
-java mySaude -u <user> -p <password> -d <path_ficheiro.cifrado>
+java mySaude -u <user> -p <password> -d <path_ficheiros.cifrado>
 
 Cifrar e enviar:
-java mySaude -s <ip>:<porto> -u <user> -p <password> -ce <path_ficheiro> -t <destinatario>
+java mySaude -s <ip>:<porto> -u <user> -p <password> -ce <path_ficheiros> -t <destinatario>
 
 Receber e decifrar:
-java mySaude -s <ip>:<porto> -u <user> -p <password> -rd <nome_ficheiro>
+java mySaude -s <ip>:<porto> -u <user> -p <password> -rd <nome_ficheiros>
 
 Assinar:
-java mySaude -u <user> -p <password> -a <path_ficheiro>
+java mySaude -u <user> -p <password> -a <path_ficheiros>
 
 Verificar assinatura:
-java mySaude -u <user> -p <password> -v <path_ficheiro> -t <assinante>
+java mySaude -u <user> -p <password> -v <path_ficheiros> -t <assinante>
 
 Assinar e enviar:
-java mySaude -s <ip>:<porto> -u <user> -p <password> -ae <path_ficheiro> -t <destinatario>
+java mySaude -s <ip>:<porto> -u <user> -p <password> -ae <path_ficheiros> -t <destinatario>
 
 Receber e verificar:
-java mySaude -s <ip>:<porto> -u <user> -p <password> -rv <nome_ficheiro> -t <assinante>
+java mySaude -s <ip>:<porto> -u <user> -p <password> -rv <nome_ficheiros> -t <assinante>
 
 Assinar + cifrar + enviar:
-java mySaude -s <ip>:<porto> -u <user> -p <password> -ace <path_ficheiro> -t <destinatario>
+java mySaude -s <ip>:<porto> -u <user> -p <password> -ace <path_ficheiros> -t <destinatario>
+
+Nota: neste comando indica-se apenas o nome do ficheiro original. 
+O programa constrói automaticamente os nomes dos ficheiros associados (.envelope, .chave.<username> e .assinatura.<assinante>),
 
 Receber + decifrar + verificar:
-java mySaude -s <ip>:<porto> -u <user> -p <password> -rdv <nome_ficheiro> -t <assinante>
+java mySaude -s <ip>:<porto> -u <user> -p <password> -rdv <nome_ficheiros> -t <assinante>
 
+Nota: neste comando indica-se apenas o nome do ficheiro original. O programa vai buscar automaticamente os ficheiros associados no servidor (.envelope, .chave e .assinatura).
 
 7. Ficheiros de teste
 
