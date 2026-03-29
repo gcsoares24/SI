@@ -9,9 +9,6 @@
 *
 ***************************************************************************/
 
-import java.io.BufferedOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
@@ -23,12 +20,10 @@ import java.net.ConnectException;
 import java.net.Socket;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Scanner;
 import java.util.Set;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -95,8 +90,7 @@ public class mySaude {
 		try {
 			System.out.println("cliente> A iniciar...");
 			Map<String, String> flags = argsMapping(args);
-	        
-	        System.out.println("flags: "+ flags);
+	       
 	        
 	        
 	        String option = inicialize(flags);
@@ -117,21 +111,9 @@ public class mySaude {
             }
             
             switchCase(option, flags.get(option));
-	
-            //
-            // ELIMINAR
-            //
-            // ELIMINAR
-            // ELIMINAR
-            //
-            // ELIMINAR
-            // ELIMINAR
-            //
-            // ELIMINAR
-	        System.out.println(flags);
 	 
 	    }catch(Exception e){
-	        	System.out.println("\n\nIt seems like your option has an error:\n\n" + e.getMessage());
+	        	System.out.println("\n\nIt seems like your option has an ERRO:\n\n" + e.getMessage());
 	        	return;
 	     } finally {
 	         client.closeClientResources();
@@ -173,34 +155,28 @@ public class mySaude {
     	switch (option) {
 	        // 2A. Transferência de Ficheiros
 	        case "-e":
-	            System.out.println("-e: Envia ficheiros para o servidor.");
 	            if(client.receiver == null) {
 	            	throw new EOFException("There is no -t (receiver).");
 	            }
 	            client.sendFiles(value, client.receiver);
 	            break;
 	        case "-r":
-	            System.out.println("-r: Recebe ficheiros do servidor.");
 	            client.receiveFiles(value);
 	            break;
 	
 	        // 2B. Criptografia
 	        case "-c":
-	            System.out.println("-c: Cifra ficheiros localmente (AES + RSA).");
 				client.encryptFiles(value, client.receiver);
 	            break;
 	        case "-d":
-	            System.out.println("-d: Decifra ficheiros usando a chave local.");
 				client.decryptFiles(value);
 	            break;
 	
 	        // 2C. Assinatura Digital
 	        case "-a":
-	            System.out.println("-a: Assina ficheiros localmente.");
 				client.signFiles(value);
 	            break;
 	        case "-v":
-	            System.out.println("-v: Valida a assinatura de ficheiros.");
 				if(client.receiver == null) {
 	            	throw new EOFException("Falta o parametro -t com o username de quem assinou.");
 	            }
@@ -209,7 +185,6 @@ public class mySaude {
 	
 	        // 2D. Operações Combinadas
 	        case "-ce":
-	            System.out.println("-ce: Cifra e envia ficheiros para o servidor.");
 	            if(client.receiver == null) {
 	                throw new EOFException("There is no -t (receiver).");
 	            }
@@ -225,7 +200,6 @@ public class mySaude {
 	            break;
 
 	        case "-rd":
-	            System.out.println("-rd: Recebe e decifra ficheiros do servidor.");
 
 	            String filesToDecrypt = client.receiveFiles(value);
 
@@ -240,13 +214,11 @@ public class mySaude {
 	            String filesToVerify  = client.receiveFiles(value);
 	            
 	            client.verifySignatures(filesToVerify, client.receiver);
-	            System.out.println("-rv: Recebe ficheiros e valida assinatura.");
 	            break;
 	        case "-ace":
 	        	client.signEncryptSend(value, client.receiver);
 	            break;
 	        case "-rdv":
-	            System.out.println("-rdv: Recebe, decifra e valida assinatura de ficheiros.");
 	        	client.receiveDecryptVerify(value, client.receiver);
 	            break;
 	
@@ -295,15 +267,12 @@ public class mySaude {
 	            case "-s": client.startClient(flags.get("-s").split(":"));
 	                break;
 	            case "-u":
-	                System.out.println("-u: Identifica o utilizador que executa o comando.");
 	                client.username = flags.get("-u");
 	                break;
 	            case "-p":
-	                System.out.println("-p: Password para aceder à keystore local do utilizador.");
 	                client.password = flags.get("-p");
 	                break;
 	            case "-t":
-	                System.out.println("-t: Define o destinatário ou o autor da operação.");
 	                client.receiver = flags.get("-t");
 	                break;
 	            default:
@@ -319,7 +288,7 @@ public class mySaude {
 	}
 
 	public void startClient(String[] address) throws ConnectException {
-	    System.out.println("Servidor>-s: A definir o endereço IP e o porto do servidor.");
+	    System.out.println("-s: A definir o endereço IP e o porto do servidor.");
 
 	    int port;
 	    String ip;
@@ -350,7 +319,7 @@ public class mySaude {
 	    } catch (ConnectException e) {
 	        throw new ConnectException("\tConnection refused. Make sure the mySaudeServer is running at the specified address and port.");
 	    } catch (IOException e) {
-	        throw new RuntimeException("Erro ao ligar ao servidor: " + e.getMessage(), e);
+	        throw new RuntimeException("ERRO ao ligar ao servidor: " + e.getMessage(), e);
 	    }
 	}
 	
@@ -376,12 +345,12 @@ public class mySaude {
 	        String serverResponse = (String) client.objIn.readObject();
 
 	        if (serverResponse.equals(NO_DIRECTORY)) {
-	            System.out.println("Erro: diretoria do utilizador '" + receiver + "' não existe no servidor.");
+	            System.out.println("ERRO: diretoria do utilizador '" + receiver + "' não existe no servidor.");
 	            return;
 	        }
 
 	        if (!serverResponse.equals(OK)) {
-	            System.out.println("Erro: resposta inválida do servidor.");
+	            System.out.println("ERRO: resposta inválida do servidor.");
 	            return;
 	        }
 
@@ -390,7 +359,7 @@ public class mySaude {
 	        	File file = new File(path.trim());
 	        	
 	            if (!file.exists() || !file.isFile()) {
-	                System.out.println("Erro: ficheiro não existe do lado do cliente: " + path.trim());
+	                System.out.println("ERRO: ficheiro não existe do lado do cliente: " + path.trim());
 
 	                client.objOut.writeObject(FILE_NOT_FOUND_FLAG);
 	                client.objOut.writeObject(path.trim());
@@ -407,12 +376,12 @@ public class mySaude {
 	            String fileResponse = (String) client.objIn.readObject();
 
 	            if (fileResponse.equals(SERVER_FILE_EXISTS)) {
-	                System.out.println("Erro: ficheiro já existe no servidor: " + file.getName());
+	                System.out.println("ERRO: O ficheiro " + file.getName() + " ou alguma das suas variacoes, já existe no servidor");
 	                continue;
 	            }
 
 	            if (!fileResponse.equals(OK_TO_SEND)) {
-	                System.out.println("Erro: resposta inválida do servidor para o ficheiro " + file.getName());
+	                System.out.println("ERRO: resposta inválida do servidor para o ficheiro " + file.getName());
 	                continue;
 	            }
 
@@ -463,17 +432,17 @@ public class mySaude {
 	            String status = (String) client.objIn.readObject();
 
 	            if (status.equals(NO_DIRECTORY)) {
-	                System.out.println("Erro: diretoria do utilizador '" + client.username + "' não existe no servidor.");
+	                System.out.println("ERRO: diretoria do utilizador '" + client.username + "' não existe no servidor.");
 	                return receivedFiles;
 	            }
 
 	            if (status.equals(FILE_NOT_FOUND_FLAG)) {
-	                System.out.println("Erro: ficheiro não existe no servidor: " + fileName);
+	                System.out.println("ERRO: ficheiro não existe no servidor: " + fileName);
 	                continue;
 	            }
 
 	            if (!status.equals(FILE_INFO)) {
-	                System.out.println("Erro: resposta inválida do servidor para o ficheiro " + fileName);
+	                System.out.println("ERRO: resposta inválida do servidor para o ficheiro " + fileName);
 	                continue;
 	            }
 
@@ -494,7 +463,7 @@ public class mySaude {
 	            }
 
 	            if (outFile.exists()) {
-	                System.out.println("Erro: ficheiro já existe do lado do cliente: " + fileName);
+	                System.out.println("ERRO: ficheiro já existe do lado do cliente: " + fileName);
 	                client.objOut.writeObject(CLIENT_FILE_EXISTS);
 	                client.objOut.flush();
 	                continue;
@@ -545,7 +514,7 @@ public class mySaude {
 
 	        Certificate cert = ks.getCertificate(targetUser);
 	        if (cert == null) {
-	            System.err.println("Erro: Certificado para " + targetUser + " não encontrado.");
+	            System.err.println("ERRO: Certificado para " + targetUser + " não encontrado.");
 	            return "";
 	        }
 	        PublicKey publicKey = cert.getPublicKey();
@@ -555,8 +524,7 @@ public class mySaude {
 	            File inputFile = new File(trimmed);
 
 	            if (!inputFile.exists()) {
-	                System.err.println("ERRO: O ficheiro '" + trimmed + "' não foi encontrado!");
-	                System.err.println("-> O Java está a procurar exatamente neste caminho: " + inputFile.getAbsolutePath());
+	                System.err.println("ERRO: O ficheiro '" + trimmed + "' não foi encontrado.");
 	                continue;
 	            }
 
@@ -587,7 +555,7 @@ public class mySaude {
 	                fos.write(wrappedKey);
 	            }
 
-	            System.out.println("File encrypted: " + encryptedPath);
+	            System.out.println("Ficheiro Cifrado: " + encryptedPath);
 
 	            // 🔥 adicionar ao resultado
 	            if (!result.isEmpty()) {
@@ -597,7 +565,7 @@ public class mySaude {
 	        }
 
 	    } catch (Exception e) {
-	        System.err.println("Erro na encriptação: " + e.getMessage());
+	        System.err.println("ERRO: na encriptação: " + e.getMessage());
 	    }
 
 	    return result;
@@ -617,9 +585,8 @@ public class mySaude {
 	            String baseName = path.replace(".cifrado", "");
 	            baseName = baseName.replace(".envelope", "");
 	            File keyFile = new File(baseName + ".chave." + this.username);
-
 	            if (!keyFile.exists()) {
-	                System.err.println("Erro: Ficheiro de chave não encontrado para " + path);
+	                System.err.println("ERRO: Ficheiro de chave não encontrado para " + path);
 	                continue;
 	            }
 
@@ -647,7 +614,7 @@ public class mySaude {
 	            System.out.println("Ficheiro desencriptado com sucesso.");
 	        }
 	    } catch (Exception e) {
-	        System.err.println("Erro na desencriptação: " + e.getMessage());
+	        System.err.println("ERRO: na desencriptação: " + e.getMessage());
 	    }
 	}
 
@@ -698,7 +665,7 @@ public class mySaude {
 	        }
 
 	    } catch (Exception e) {
-	        System.err.println("Erro na assinatura: " + e.getMessage());
+	        System.err.println("ERRO: na assinatura: " + e.getMessage());
 	    }
 
 	    return result.toString();
@@ -714,17 +681,17 @@ public class mySaude {
 
 			Certificate cert = ks.getCertificate(targetUser);
 			if (cert == null) {
-				System.err.println("Erro: Certificado do utilizador '" + targetUser + "' não encontrado na keystore.");
+				System.err.println("ERRO: Certificado do utilizador '" + targetUser + "' não encontrado na keystore.");
 				return;
 			}
 			PublicKey publicKey = cert.getPublicKey();
 
 			for (String path : paths) {
 				File inputFile = new File(path.trim());
-				File sigFile = new File(path.trim() + ".assinatura." + targetUser);
+				File sigFile = new File(path.trim().replace(".assinado", "") + ".assinatura." + targetUser);
 
 				if (!inputFile.exists() || !sigFile.exists()) {
-					System.err.println("Erro: O ficheiro ou a sua assinatura não foram encontrados (" + path.trim() + ")");
+					System.err.println("ERRO: O ficheiro ou a sua assinatura não foram encontrados (" + path.trim() + ")");
 					continue;
 				}
 
@@ -746,13 +713,13 @@ public class mySaude {
 
 				boolean isCorrect = signature.verify(sigBytes);
 				if (isCorrect) {
-					System.out.println("-> Assinatura VALIDA para o ficheiro: " + path.trim());
+					System.out.println("Assinatura VALIDA para o ficheiro: " + path.trim());
 				} else {
-					System.out.println("-> Assinatura INVALIDA para o ficheiro: " + path.trim());
+					System.out.println("Assinatura INVALIDA para o ficheiro: " + path.trim());
 				}
 			}
 		} catch (Exception e) {
-			System.err.println("Erro na validacao da assinatura: " + e.getMessage());
+			System.err.println("ERRO na validacao da assinatura: " + e.getMessage());
 		}
 	}
 	
@@ -829,7 +796,6 @@ public class mySaude {
 	        System.out.println("Nenhum ficheiro recebido.");
 	        return;
 	    }
-	    System.out.println(received);
 	    client.decryptFiles(received);
 
 	    StringBuilder filesToVerify = new StringBuilder();
@@ -857,7 +823,7 @@ public class mySaude {
 	            objIn.close();
 	        }
 	    } catch (IOException e) {
-	        System.err.println("Erro ao fechar ObjectInputStream: " + e.getMessage());
+	        System.err.println("ERRO: ao fechar ObjectInputStream: " + e.getMessage());
 	    }
 
 	    try {
@@ -865,7 +831,7 @@ public class mySaude {
 	            objOut.close();
 	        }
 	    } catch (IOException e) {
-	        System.err.println("Erro ao fechar ObjectOutputStream: " + e.getMessage());
+	        System.err.println("ERRO: ao fechar ObjectOutputStream: " + e.getMessage());
 	    }
 
 	    try {
@@ -873,7 +839,7 @@ public class mySaude {
 	            sock.close();
 	        }
 	    } catch (IOException e) {
-	        System.err.println("Erro ao fechar socket: " + e.getMessage());
+	        System.err.println("ERRO: ao fechar socket: " + e.getMessage());
 	    }
 	}
 }

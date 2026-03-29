@@ -1,5 +1,5 @@
 #!/bin/bash
-# uso: ./import_cert.sh user_from user_to password_to
+# uso: bash importar_certs.sh user_from user_to password_to
 
 FROM_USER="$1"
 TO_USER="$2"

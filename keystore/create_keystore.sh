@@ -1,5 +1,5 @@
 #!/bin/bash
-# rodem isto assim: ./create_keystore.sh username password
+# rodem isto assim: bash ./create_keystore.sh username password
 
 USERNAME="$1"
 PASSWORD="$2"

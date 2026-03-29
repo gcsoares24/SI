@@ -9,7 +9,6 @@
 *
 ***************************************************************************/
 
-import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
@@ -125,25 +124,6 @@ public class mySaudeServer{
 		                System.out.println("Unknown operation: " + option);
 	            }
 	            
-	            // --- LOGIN ---
-//	            String user = (String) inStream.readObject();
-//	            String passwd = (String) inStream.readObject();
-//
-//	            System.out.println("User: " + user + ", Pass: " + passwd);
-//
-//	            boolean loginOk = user.equals("guigui") && passwd.equals("eueu");
-//	            outStream.writeObject(loginOk);
-//	            outStream.flush();
-//
-//	            if (loginOk) {
-//	                // Call a method to receive a file
-//	                receiveFile(socket, "../pdfs/received.pdf");
-//	            } else {
-//	                System.out.println("Login falhou para o usuário: " + user);
-//	            }
-	            
-
-	            // --- cleanup ---
 	            inStream.close();
 	            outStream.close();
 	            socket.close();
@@ -203,7 +183,7 @@ public class mySaudeServer{
 	                String clientResponse = (String) objIn.readObject();
 
 	                if (clientResponse.equals(CLIENT_FILE_EXISTS)) {
-	                    System.out.println("Erro: ficheiro já existe do lado do cliente: " + fileName);
+	                    System.out.println("ERRO: ficheiro já existe do lado do cliente: " + fileName);
 	                    continue;
 	                }
 
@@ -226,7 +206,7 @@ public class mySaudeServer{
 	            }
 
 	        } catch (IOException | ClassNotFoundException e) {
-	            System.err.println("Error sending files: " + e.getMessage());
+	            System.err.println("ERRO: A enviar ficheiros: " + e.getMessage());
 	            e.printStackTrace();
 	        }
 	    }
@@ -265,7 +245,7 @@ public class mySaudeServer{
 
 	           
 	            if (!folder.exists() || !folder.isDirectory()) {
-	                System.out.println("Erro: diretoria do utilizador '" + receiver + "' não existe no servidor.");
+	                System.out.println("ERRO: diretoria do utilizador '" + receiver + "' não existe no servidor.");
 
 	                objOut.writeObject(NO_DIRECTORY);
 	                objOut.flush();
@@ -283,7 +263,7 @@ public class mySaudeServer{
 	                
 	                if (fileName.equals(FILE_NOT_FOUND_FLAG)) {
 	                    String originalPath = (String) objIn.readObject();
-	                    System.out.println("Erro: ficheiro não existe do lado do cliente: " + originalPath);
+	                    System.out.println("ERRO: ficheiro não existe do lado do cliente: " + originalPath);
 	                    continue;
 	                }
 	                File file;
@@ -294,7 +274,7 @@ public class mySaudeServer{
 	                destPath = destFolder + "/" + baseName;	
 	                file = new File(destPath);
 	                if (fileExists(destPath)) {
-	                    System.out.println("Erro: O ficheiro " + fileName + ", alguma das suas variacoes, já existe no servidor");
+	                    System.out.println("ERRO: O ficheiro " + fileName + " ou alguma das suas variacoes, já existe no servidor");
 
 	                    objOut.writeObject(SERVER_FILE_EXISTS);
 	                    objOut.flush();
@@ -333,7 +313,7 @@ public class mySaudeServer{
 	                        int bytesRead = objIn.read(buffer, 0, (int)Math.min(buffer.length, remaining));
 
 	                        if (bytesRead == -1) {
-	                            throw new EOFException("Fim inesperado ao receber ficheiro " + fileName);
+	                            throw new EOFException("ERRO: Fim inesperado ao receber ficheiro " + fileName);
 	                        }
 
 	                        fos.write(buffer, 0, bytesRead);
@@ -345,9 +325,9 @@ public class mySaudeServer{
 	            }
 
 	        } catch (EOFException e) {
-	            System.err.println("Erro: fim inesperado da comunicação.");
+	            System.err.println("ERRO: Fim inesperado da comunicação.");
 	        } catch (IOException | ClassNotFoundException e) {
-	            System.err.println("Error receiving files: " + e.getMessage());
+	            System.err.println("ERRO: A receber ficheiros: " + e.getMessage());
 	            e.printStackTrace();
 	        }
 	    }
