@@ -291,6 +291,7 @@ public class mySaudeServer{
 		                	destPath += ".assinado";
 		                	previousWasSignature = false;
 	                	}
+	                	//meter isto aqui eu acho: previousWasSignature = false;
 	                }
 	                
 	                if(fileName.contains(".assinatura")) {
