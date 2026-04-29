@@ -20,6 +20,10 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.security.MessageDigest;
+import java.util.Base64;
 
 public class mySaudeServer{
 	
@@ -103,6 +107,20 @@ public class mySaudeServer{
 	           	            
 	            
 	            String option = (String) inStream.readObject();
+				String username = (String) inStream.readObject();
+				String password = (String) inStream.readObject(); 
+
+				if (!authenticateUser(username, password)) {
+					outStream.writeObject("AUTH_ERROR");
+					outStream.flush();
+					socket.close();
+					System.out.println("Tentativa de login falhada para o utilizador: " + username);
+					return; 
+				}
+
+				outStream.writeObject("AUTH_OK");
+				outStream.flush();
+				System.out.println("Utilizador autenticado com sucesso: " + username);
 	            
 	            switch (option) {
 
@@ -230,6 +248,40 @@ public class mySaudeServer{
 
 	        return false;
 	    }
+
+		private boolean authenticateUser(String username, String password) {
+			File usersFile = new File("users"); 
+			if (!usersFile.exists()) {
+				System.out.println("Ficheiro 'users' não encontrado.");
+				return false;
+			}
+
+			try (BufferedReader br = new BufferedReader(new FileReader(usersFile))) {
+				String line;
+				while ((line = br.readLine()) != null) {
+					String[] parts = line.split(":");
+					
+					if (parts.length == 4 && parts[0].equals(username)) {
+						String saltBase64 = parts[2];
+						String storedHashBase64 = parts[3];
+
+						byte[] salt = Base64.getDecoder().decode(saltBase64);
+						
+						MessageDigest md = MessageDigest.getInstance("SHA-256");
+						md.update(salt); 
+						
+						byte[] computedHash = md.digest(password.getBytes());
+						String computedHashBase64 = Base64.getEncoder().encodeToString(computedHash);
+
+						return computedHashBase64.equals(storedHashBase64);
+					}
+				}
+			} catch (Exception e) {
+				System.err.println("Erro ao ler ficheiro de users: " + e.getMessage());
+			}
+			
+			return false;
+		}
 	    
 	    private void receiveFiles(ObjectInputStream objIn, ObjectOutputStream objOut, String destFolder) {
 	        try {
