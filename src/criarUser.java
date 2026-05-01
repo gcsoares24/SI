@@ -13,6 +13,7 @@ import java.security.cert.CertificateFactory;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.security.MessageDigest;
+import java.util.Scanner; 
 
 public class criarUser {
 	
@@ -59,6 +60,20 @@ public class criarUser {
 	}
 	public static void main(String[] args) throws Exception{
 		try {
+            // --- INÍCIO DA ALÍNEA B (Pedir e Validar MAC) ---
+			Scanner sc = new Scanner(System.in);
+			System.out.print("system> Introduza a password do MAC do servidor: ");
+			String macPassword = sc.nextLine();
+
+			// Verifica a integridade antes de fazer o que quer que seja
+			if (new File("../servidor/users.txt").exists()) {
+			    if (!MacHelper.verificarMac(macPassword)) {
+			        System.out.println("erro FATAL> O ficheiro users.txt foi adulterado ou a password MAC está errada!");
+			        return; // Pára imediatamente a execução
+			    }
+			}
+			// --- FIM DA ALÍNEA B ---
+
 			System.out.println("system> creating user...");
 			String keyStore = "../keystore/";
 			Map<String, String> flags = argsMapping(args, keyStore);
@@ -153,6 +168,11 @@ public class criarUser {
 	            );
 	        }
             System.out.println("system> user inserted into users.txt");
+
+            // --- INÍCIO DA ALÍNEA B (Atualizar MAC) ---
+            MacHelper.atualizarMac(macPassword);
+            System.out.println("system> Ficheiro mySaude.mac atualizado com sucesso!");
+            // --- FIM DA ALÍNEA B ---
 
 		 } catch (Exception e) {
 		        System.out.println("ERROR: " + e.getMessage());
