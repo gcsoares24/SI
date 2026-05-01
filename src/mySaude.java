@@ -17,7 +17,12 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ConnectException;
+
 import java.net.Socket;
+
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -89,9 +94,13 @@ public class mySaude {
 
 		try {
 			System.out.println("cliente> A iniciar...");
+			
+			System.setProperty("javax.net.ssl.trustStore", "../keystore/truststore.client");
+			System.setProperty("javax.net.ssl.trustStorePassword", "123456");
+			System.setProperty("javax.net.ssl.trustStoreType", "PKCS12");
+			
 			Map<String, String> flags = argsMapping(args);
 	       
-	        
 	        
 	        String option = inicialize(flags);
 	        
@@ -310,11 +319,19 @@ public class mySaude {
 	    }
 
 	    try {
-	        client.sock = new Socket(ip, port);
+	    	SSLSocketFactory sf = (SSLSocketFactory) SSLSocketFactory.getDefault();
+	    	client.sock = sf.createSocket(ip, port);
+	    	
 	        client.objOut = new ObjectOutputStream(client.sock.getOutputStream());
 	        client.objIn = new ObjectInputStream(client.sock.getInputStream());
 
 	        System.out.println("Connected to server at " + ip + ":" + port);
+	        
+	        //DEPOIS APAGAR ISTO
+	        SSLSocket sslSock = (SSLSocket) client.sock;
+	        System.out.println("TLS ativo: " + sslSock.getSession().getCipherSuite());
+	        sslSock.getSession();
+	        //LLLLL
 
 	    } catch (ConnectException e) {
 	        throw new ConnectException("\tConnection refused. Make sure the mySaudeServer is running at the specified address and port.");

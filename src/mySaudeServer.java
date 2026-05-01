@@ -19,6 +19,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
 
 
 public class mySaudeServer{
@@ -57,15 +59,21 @@ public class mySaudeServer{
 		        System.out.println("Port must be a number!");
 		        return;
 		    }
-
+		    
+		    System.setProperty("javax.net.ssl.keyStore", "../keystore/keystore.server");
+		    System.setProperty("javax.net.ssl.keyStorePassword", "123456");
+		    System.setProperty("javax.net.ssl.keyStoreType", "PKCS12");
 		    server.startServer();
 	}
 
 	public void startServer () throws IOException{
-		ServerSocket sSoc = null;
-        
+		SSLServerSocket sSoc = null;
+
 		try {
-			sSoc = new ServerSocket(port);
+		    SSLServerSocketFactory ssf =
+		        (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
+
+		    sSoc = (SSLServerSocket) ssf.createServerSocket(port);
 		} catch (IOException e) {
 			System.err.println(e.getMessage());
 			System.exit(-1);
