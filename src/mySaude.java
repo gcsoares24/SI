@@ -22,6 +22,8 @@ import java.net.Socket;
 
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.SSLHandshakeException;
+import javax.net.ssl.SSLSession;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -79,6 +81,8 @@ public class mySaude {
 	    }
 	    return fallback;
 	}
+	
+	
 	public Socket sock;
     public ObjectOutputStream objOut;
     public ObjectInputStream objIn;
@@ -95,9 +99,7 @@ public class mySaude {
 		try {
 			System.out.println("cliente> A iniciar...");
 			
-			System.setProperty("javax.net.ssl.trustStore", "../keystore/truststore.client");
-			System.setProperty("javax.net.ssl.trustStorePassword", "123456");
-			System.setProperty("javax.net.ssl.trustStoreType", "PKCS12");
+			configureClientTLS();
 			
 			Map<String, String> flags = argsMapping(args);
 	       
@@ -122,7 +124,7 @@ public class mySaude {
             switchCase(option, flags.get(option));
 	 
 	    }catch(Exception e){
-	        	System.out.println("\n\nIt seems like your option has an ERRO:\n\n" + e.getMessage());
+	        	System.out.println("\n\nIt seems like your option has an ERROR:\n\n" + e.getMessage());
 	        	return;
 	     } finally {
 	         client.closeClientResources();
@@ -295,6 +297,31 @@ public class mySaude {
         }
 		return option;
 	}
+	
+	private static String getKeyStoreDir() {
+	    return System.getProperty("user.home")
+	            + File.separator + "mySaude"
+	            + File.separator + "keystore";
+	}
+
+	private static void configureClientTLS() {
+	    String trustStorePath = getKeyStoreDir() + File.separator + "truststore.client";
+
+	    File trustStoreFile = new File(trustStorePath);
+
+	    if (!trustStoreFile.exists()) {
+	        throw new IllegalArgumentException(
+	            "ERRO TLS: truststore do cliente não encontrada em: " + trustStorePath +
+	            "\nColoca a truststore.client nessa pasta ou confirma o caminho."
+	        );
+	    }
+
+	    System.setProperty("javax.net.ssl.trustStore", trustStoreFile.getAbsolutePath());
+	    System.setProperty("javax.net.ssl.trustStorePassword", "123456");
+	    System.setProperty("javax.net.ssl.trustStoreType", "PKCS12");
+
+	    System.out.println("TLS> truststore usada: " + trustStoreFile.getAbsolutePath());
+	}
 
 	public void startClient(String[] address) throws ConnectException {
 	    System.out.println("-s: A definir o endereço IP e o porto do servidor.");
@@ -320,23 +347,40 @@ public class mySaude {
 
 	    try {
 	    	SSLSocketFactory sf = (SSLSocketFactory) SSLSocketFactory.getDefault();
-	    	client.sock = sf.createSocket(ip, port);
+
+	        SSLSocket sslSock = (SSLSocket) sf.createSocket(ip, port);
+
+	        /*
+	         * Força o handshake TLS imediatamente.
+	         * Se a truststore não tiver o certificado do servidor,
+	         * ou se o caminho estiver errado, o erro aparece aqui.
+	         */
+	        sslSock.startHandshake();
+
+	        client.sock = sslSock;
+
+	        SSLSession session = sslSock.getSession();
+	        System.out.println("TLS ativo: " + session.getCipherSuite());
+	        System.out.println("TLS servidor: " + session.getPeerHost());
 	    	
 	        client.objOut = new ObjectOutputStream(client.sock.getOutputStream());
 	        client.objIn = new ObjectInputStream(client.sock.getInputStream());
 
 	        System.out.println("Connected to server at " + ip + ":" + port);
 	        
-	        //DEPOIS APAGAR ISTO
-	        SSLSocket sslSock = (SSLSocket) client.sock;
-	        System.out.println("TLS ativo: " + sslSock.getSession().getCipherSuite());
-	        sslSock.getSession();
-	        //LLLLL
+
+	    } catch (SSLHandshakeException e) {
+	        throw new RuntimeException(
+	                "ERRO TLS: não foi possível verificar o certificado do servidor.\n" +
+	                "Confirma se a truststore.client contém o certificado do servidor.\n" +
+	                "Também confirma se o alias do certificado é o esperado.\n" +
+	                "Detalhe: " + e.getMessage(), e
+	            );
 
 	    } catch (ConnectException e) {
 	        throw new ConnectException("\tConnection refused. Make sure the mySaudeServer is running at the specified address and port.");
 	    } catch (IOException e) {
-	        throw new RuntimeException("ERRO ao ligar ao servidor: " + e.getMessage(), e);
+	        throw new RuntimeException("Failed to connect with the server: " + e.getMessage(), e);
 	    }
 	}
 	
