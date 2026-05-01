@@ -1,0 +1,196 @@
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateFactory;
+
+import java.security.SecureRandom;
+import java.util.Base64;
+import java.security.MessageDigest;
+
+public class criarUser {
+	
+	private static final Set<String> FUNCTIONS = Set.of(
+		    "utente", "medico"
+		);
+
+	public static byte[] generateSalt() {
+	    byte[] salt = new byte[16];
+	    new SecureRandom().nextBytes(salt);
+	    return salt;
+	}
+	
+	public static byte[] hashPassword(String password, byte[] salt) throws Exception {
+	    MessageDigest md = MessageDigest.getInstance("SHA-256");
+	    md.update(salt);
+	    return md.digest(password.getBytes());
+	}
+	
+	public static boolean userExists(File file, String username) throws IOException {
+
+	    if (!file.exists()) {
+	        return false; // no file = no users
+	    }
+
+	    try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+	        String line;
+
+	        while ((line = reader.readLine()) != null) {
+
+	            if (line.isBlank()) continue; // skip empty lines
+
+	            String[] parts = line.split(":");
+
+	            if (parts.length < 1) continue; // avoid malformed lines
+
+	            if (parts[0].equals(username)) {
+	                return true;
+	            }
+	        }
+	    }
+
+	    return false;
+	}
+	public static void main(String[] args) throws Exception{
+		try {
+			System.out.println("system> creating user...");
+			String keyStore = "../keystore/";
+			Map<String, String> flags = argsMapping(args, keyStore);
+			String userFile = keyStore + "keystore.users";
+			
+			//C.
+			try (FileInputStream fis = new FileInputStream(flags.get("certFile"))) {
+			    // 1. Ler o certificado 
+			    CertificateFactory cf = CertificateFactory.getInstance("X.509");
+			    Certificate cert = cf.generateCertificate(fis);
+			    System.out.println("system> Certificado lido com sucesso!");
+
+			    // 2. Lógica da KeyStore
+			    java.security.KeyStore ks = java.security.KeyStore.getInstance("PKCS12");
+			    char[] ksPassword = "password".toCharArray(); // Define uma pass para a KS
+			    String ksPath = userFile; 
+			    System.out.println(flags);
+
+			    File ksFile = new File(ksPath);
+			    if (ksFile.exists()) {
+			        try (FileInputStream ksfis = new FileInputStream(ksFile)) {
+			            ks.load(ksfis, ksPassword);
+			        }
+			    } else {
+			        ks.load(null, ksPassword); // Inicializa se não existir
+			    }
+
+			    
+			    if(ks.getCertificate(flags.get("username")) != null) {
+			        throw new IllegalArgumentException(
+				            "The certificate for user " + flags.get("username") + " already exists"
+				        );
+			    }
+			    // 3. Adicionar o certificado 
+			    // O alias tem de ser o username
+			    ks.setCertificateEntry(flags.get("username"), cert);
+
+			    // 4. Gravar a KeyStore no disco
+			    try (java.io.FileOutputStream fos = new java.io.FileOutputStream(ksPath)) {
+			        ks.store(fos, ksPassword);
+			        System.out.println("system> Certificado guardado em keystore.users com sucesso!");
+			    }
+			    
+			    // 5. criar pasta do user
+			    File userDir = new File("../servidor/" + flags.get("username"));
+
+			    if (!userDir.exists()) {
+			        boolean created = userDir.mkdirs(); // mkdirs() cria também pastas pai se necessário
+			        if (created) {
+			            System.out.println("system> Diretoria criada para o utilizador: " + userDir.getPath());
+			        } else {
+			        	throw new IllegalArgumentException("erro> Não foi possível criar a diretoria para o utilizador.");
+			        }
+			    } else {
+			        System.out.println("system> A diretoria do utilizador já existe.");
+			    }
+			    
+			} catch (Exception e) {
+			    System.err.println("erro> Falha na gestão da KeyStore: " + e.getMessage());
+			    throw e;
+			}
+			
+
+
+		    // A. Confidencialidade de passwords - gerar o user.txt
+		    File usersDir = new File("../servidor/users.txt");
+
+		    if (!usersDir.exists()) {
+		        System.out.println("system> users.txt doesn't exist, creating users.txt...");
+		        try {
+		            usersDir.createNewFile();
+		        } catch (IOException e) {
+		            throw new IOException("Failed to create users.txt");
+		        }
+		    }
+		    if (userExists(usersDir, flags.get("username"))) {
+		        throw new IllegalArgumentException("User already exists in users.txt");
+		    }
+		    
+	        byte[] salt = generateSalt();
+	        byte[] hash = hashPassword(flags.get("password"), salt);
+
+	        String saltBase64 = Base64.getEncoder().encodeToString(salt);
+	        String hashBase64 = Base64.getEncoder().encodeToString(hash);
+
+	        try (FileWriter writer = new FileWriter(usersDir, true)) {
+	            writer.write(
+	                flags.get("username") + ":" +
+	                flags.get("function") + ":" +
+	                saltBase64 + ":" +
+	                hashBase64 + "\n"
+	            );
+	        }
+            System.out.println("system> user inserted into users.txt");
+
+		 } catch (Exception e) {
+		        System.out.println("ERROR: " + e.getMessage());
+		    }
+		}
+	
+	public static Map<String, String> argsMapping(String[] args, String keyStore) {
+	    Map<String, String> map = new HashMap<>();
+
+	    if (args.length < 5) {
+	        throw new IllegalArgumentException(
+	            "Missing arguments.\nUsage: criarUser <username> <funcao> <password> -f <cert_file>"
+	        );
+	    }
+	    String username = args[0];
+	    String function = args[1];
+	    if(!FUNCTIONS.contains(function)) {
+            System.err.println("erro> The function should be: 'medico' or 'utente'.");
+	    }
+	    String password = args[2];
+
+	    if (!args[3].equals("-f")) {
+	        throw new IllegalArgumentException("Expected -f flag");
+	    }
+
+	    String certFile = keyStore + args[4];
+
+	    map.put("username", username);
+	    map.put("function", function);
+	    
+	    map.put("password", password);
+	    map.put("certFile", certFile);
+
+	    //
+	    if (!certFile.contains(username)) {
+	        throw new IllegalArgumentException("certFile is not from the correct user");
+	    }
+
+	    return map;
+	}
+}

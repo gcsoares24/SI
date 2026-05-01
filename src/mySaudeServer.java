@@ -19,11 +19,16 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateEncodingException;
+import java.security.cert.CertificateException;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.security.MessageDigest;
-import java.util.Base64;
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
+
 
 public class mySaudeServer{
 	
@@ -34,6 +39,8 @@ public class mySaudeServer{
 	private static final String OK_TO_SEND = "OK_TO_SEND";
 	private static final String CLIENT_FILE_EXISTS = "CLIENT_FILE_EXISTS";
 	private static final String FILE_INFO = "FILE_INFO";
+	
+	private static final String PATH_KEYSTORE = "../keystore/";
 	
 	private int port;
     public ObjectOutputStream objOut;
@@ -61,15 +68,21 @@ public class mySaudeServer{
 		        System.out.println("Port must be a number!");
 		        return;
 		    }
-
+		    
+		    System.setProperty("javax.net.ssl.keyStore", "../keystore/keystore.server");
+		    System.setProperty("javax.net.ssl.keyStorePassword", "123456");
+		    System.setProperty("javax.net.ssl.keyStoreType", "PKCS12");
 		    server.startServer();
 	}
 
 	public void startServer () throws IOException{
-		ServerSocket sSoc = null;
-        
+		SSLServerSocket sSoc = null;
+
 		try {
-			sSoc = new ServerSocket(port);
+		    SSLServerSocketFactory ssf =
+		        (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
+
+		    sSoc = (SSLServerSocket) ssf.createServerSocket(port);
 		} catch (IOException e) {
 			System.err.println(e.getMessage());
 			System.exit(-1);
@@ -105,26 +118,16 @@ public class mySaudeServer{
 	            ObjectOutputStream outStream = new ObjectOutputStream(socket.getOutputStream());
 	            ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream());
 	           	            
-	            
+
+            	System.out.println("ENCRIPTAR");
 	            String option = (String) inStream.readObject();
-				String username = (String) inStream.readObject();
-				String password = (String) inStream.readObject(); 
-
-				if (!authenticateUser(username, password)) {
-					outStream.writeObject("AUTH_ERROR");
-					outStream.flush();
-					socket.close();
-					System.out.println("Tentativa de login falhada para o utilizador: " + username);
-					return; 
-				}
-
-				outStream.writeObject("AUTH_OK");
-				outStream.flush();
-				System.out.println("Utilizador autenticado com sucesso: " + username);
+            	System.out.println("ENCRIPTAR");
 	            
 	            switch (option) {
 
 		            case "-e":
+		            	System.out.println("ENCRIPTAR");
+		            	break;
 		            case "-ce":
 		            case "-ae":
 		            case "-ace":
@@ -137,7 +140,9 @@ public class mySaudeServer{
 		            case "-rdv":
 		                sendFiles(inStream, outStream, "../servidor/");
 		                break;
-	
+		            case "GET_CERT":
+		            	sendCert(inStream, outStream);
+		            	break;
 		            default:
 		                System.out.println("Unknown operation: " + option);
 	            }
@@ -148,7 +153,13 @@ public class mySaudeServer{
 
 	        } catch (IOException | ClassNotFoundException e) {
 	            e.printStackTrace();
-	        }
+	        } catch (CertificateEncodingException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (KeyStoreException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 	    }
 	    private String getBaseName(String fileName) {
 	        if (fileName.endsWith(".cifrado")) {
@@ -161,6 +172,84 @@ public class mySaudeServer{
 	            return fileName.replace(".envelope", "");
 	        }
 	        return fileName;
+	    }
+	    private void sendCert(ObjectInputStream objIn, ObjectOutputStream objOut) throws KeyStoreException, CertificateEncodingException, IOException {
+	    	try {
+	    		String username = objIn.readUTF();
+	    		
+
+			    System.out.println("AHH");
+			    KeyStore ks = KeyStore.getInstance("PKCS12");
+			    File ksFile = new File(PATH_KEYSTORE + "keystore.users");
+			    System.out.println("BAHH");
+	    		if(!ksFile.exists()) {
+	    			objOut.writeUTF("NOT_FOUND");
+	    			objOut.flush();
+	    			return;
+	    		}else{
+				    System.out.println("CAHH");
+			        try (FileInputStream ksfis = new FileInputStream(ksFile)) {
+					    System.out.println("DAHH");
+
+					    char[] ksPassword = "password".toCharArray(); // Define uma pass para a KS
+			            ks.load(ksfis, ksPassword);
+					    System.out.println("FAHH");
+			        } catch (NoSuchAlgorithmException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (CertificateException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+	    		}
+			    System.out.println("GAHH");
+	    		Certificate cert = ks.getCertificate(username);
+	    		if(cert == null) {
+	    			objOut.writeUTF(FILE_NOT_FOUND_FLAG);
+	    			objOut.flush();
+	    	        return;
+	    		}
+	    		byte[] certBytes = cert.getEncoded();
+	    		
+	    		// enviar OK
+	    		objOut.writeUTF(OK);
+	    		objOut.flush();
+
+			    System.out.println("HAHH");
+	    		//resposta ao OK
+	    		String response = objIn.readUTF();
+	    		if(response == CLIENT_FILE_EXISTS) {
+	    			return;
+	    		}
+
+			    System.out.println("JAHH");
+			    
+	    		// enivar tamanho
+			    objOut.writeLong(certBytes.length);
+	    		objOut.flush();
+	    		
+	    		
+
+			    System.out.println("KAHH");
+	    		// enviar os bytes do certificado
+			    objOut.write(certBytes);
+			    objOut.flush();
+	    		
+	    		
+	    		System.out.println("CERT OF THE USER" + username);
+                System.out.println(cert);
+               
+                
+                
+	    	} catch (IOException e) {
+	            System.err.println("ERRO: A enviar ficheiros: " + e.getMessage());
+	            e.printStackTrace();
+	        } catch (KeyStoreException e) {
+	        	objOut.writeUTF(FILE_NOT_FOUND_FLAG);
+	        	objOut.flush();
+	            System.err.println("ERRO: The cert does NOT exist!");
+	        	
+	        }
 	    }
 	    
 	    private void sendFiles(ObjectInputStream objIn, ObjectOutputStream objOut, String baseFolder) {
@@ -248,40 +337,6 @@ public class mySaudeServer{
 
 	        return false;
 	    }
-
-		private boolean authenticateUser(String username, String password) {
-			File usersFile = new File("users"); 
-			if (!usersFile.exists()) {
-				System.out.println("Ficheiro 'users' não encontrado.");
-				return false;
-			}
-
-			try (BufferedReader br = new BufferedReader(new FileReader(usersFile))) {
-				String line;
-				while ((line = br.readLine()) != null) {
-					String[] parts = line.split(":");
-					
-					if (parts.length == 4 && parts[0].equals(username)) {
-						String saltBase64 = parts[2];
-						String storedHashBase64 = parts[3];
-
-						byte[] salt = Base64.getDecoder().decode(saltBase64);
-						
-						MessageDigest md = MessageDigest.getInstance("SHA-256");
-						md.update(salt); 
-						
-						byte[] computedHash = md.digest(password.getBytes());
-						String computedHashBase64 = Base64.getEncoder().encodeToString(computedHash);
-
-						return computedHashBase64.equals(storedHashBase64);
-					}
-				}
-			} catch (Exception e) {
-				System.err.println("Erro ao ler ficheiro de users: " + e.getMessage());
-			}
-			
-			return false;
-		}
 	    
 	    private void receiveFiles(ObjectInputStream objIn, ObjectOutputStream objOut, String destFolder) {
 	        try {
@@ -343,6 +398,7 @@ public class mySaudeServer{
 		                	destPath += ".assinado";
 		                	previousWasSignature = false;
 	                	}
+	                	//meter isto aqui eu acho: previousWasSignature = false;
 	                }
 	                
 	                if(fileName.contains(".assinatura")) {

@@ -101,22 +101,14 @@ public class mySaude {
             validateRequiredFlags(option);
             
             //sends only server type of operation
-			if (SERVER_OPTIONS.contains(option)) {
-				if (client.objOut == null) {
-					throw new IllegalArgumentException("A opção " + option + " requer ligação ao servidor (-s).");
-				}
-				
-				client.objOut.writeObject(option);
-				client.objOut.writeObject(client.username);
-				client.objOut.writeObject(client.password); 
-				client.objOut.flush();
-
-				String authStatus = (String) client.objIn.readObject();
-				if ("AUTH_ERROR".equals(authStatus)) {
-					System.out.println("Erro: Falha na autenticação (Username ou password incorretos).");
-					return;
-				}
-			}
+            if (SERVER_OPTIONS.contains(option)) {
+            	if (client.objOut == null) {
+                    throw new IllegalArgumentException("A opção " + option + " requer ligação ao servidor (-s).");
+                }
+            	
+            	client.objOut.writeObject(option);
+                client.objOut.flush();
+            }
             
             switchCase(option, flags.get(option));
 	 
