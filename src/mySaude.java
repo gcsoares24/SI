@@ -30,9 +30,13 @@ import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.security.Signature;
 
 
@@ -273,7 +277,14 @@ public class mySaude {
         for (String key : flags.keySet()) {
         	switch (key) {
 	            // 1. Flags de Conexão e Identificação
-	            case "-s": client.startClient(flags.get("-s").split(":"));
+	            case "-s":
+	            	System.out.println(flags);
+	            	// ELIMINAR: se entretanto for necessario mais, adc aq
+	            	if(flags.containsKey("-d")) {
+	            		System.out.println("You are decripting... It's a local operation, you DO NOT need to connect to a server.\n");
+	            		break;
+	            	}
+	            	client.startClient(flags.get("-s").split(":"));
 	                break;
 	            case "-u":
 	                client.username = flags.get("-u");
@@ -517,22 +528,117 @@ public class mySaude {
 	    return receivedFiles;
 	}
 	
-	
+	private Certificate loadCertFromFile(File certFile) {
+	    try (FileInputStream fis = new FileInputStream(certFile)) {
+	        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+	        return cf.generateCertificate(fis);
+	    } catch (Exception e) {
+	        return null;
+	    }
+	}
+	public Certificate receiveCert(KeyStore ks) throws NoSuchAlgorithmException, CertificateException {
+	    if (client.sock == null || client.objOut == null || client.objIn == null) {
+	        System.out.println("Socket is not connected. Call startClient first.");
+	        
+	    }
+	    
+		try {
+		    // send tag and targetUser
+		    client.objOut.writeObject("GET_CERT");
+		    client.objOut.flush();
+		    
+		    client.objOut.writeUTF(client.receiver);
+		    client.objOut.flush();
+		    
+		    
+		    // get file
+		    String status = (String) client.objIn.readUTF();
+		    
+		    File certFile = new File("../keystore/" + client.receiver + ".cert");
+
+		    if (status.equals(FILE_NOT_FOUND_FLAG)) {
+                System.out.println("ERRO: Keystore in server does not exist!");
+                return null;
+            }
+		    if (status.equals("NOT_FOUND")) {
+                System.out.println("ERRO: that user is not the servers keystore!");
+                return null;
+            }
+		    if (!status.equals(OK)) {
+                System.out.println("ERRO: INVALID RESPONSE TRYING TO GET CERT." );
+                return null;
+            }
+            
+            if (certFile.exists()) {
+                System.out.println("ERRO: The cert file for the user " + client.receiver + " already exists here...\n");
+                client.objOut.writeUTF(CLIENT_FILE_EXISTS);
+                client.objOut.flush();
+            }else {
+            	client.objOut.writeUTF(OK);
+                client.objOut.flush();
+
+                long fileSize = client.objIn.readLong();
+                try (FileOutputStream fos = new FileOutputStream(certFile)) {
+                    byte[] buffer = new byte[8192];
+                    long remaining = fileSize;
+
+                    while (remaining > 0) {
+                        int bytesRead = client.objIn.read(buffer, 0, (int)Math.min(buffer.length, remaining));
+
+                        if (bytesRead == -1) {
+                            throw new EOFException("Unexpected ending while receiving the cert\n");
+                        }
+
+                        fos.write(buffer, 0, bytesRead);
+                        remaining -= bytesRead;
+                    }
+                }
+
+                System.out.println("The cert file for the user " + client.receiver + " was created sucessfully!\n");
+    		    
+            }
+            System.out.println("Loading the cert...\n");
+            Certificate cert = loadCertFromFile(certFile);
+            ks.setCertificateEntry(client.receiver, cert);
+	         // SAVE KEYSTORE TO FILE (THIS IS WHAT YOU ARE MISSING)
+	            try (FileOutputStream fos =
+	                     new FileOutputStream("../keystore/keystore." + client.username)) {
+	                ks.store(fos, client.password.toCharArray());
+	            }
+            
+            
+    		return loadCertFromFile(certFile);		
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (KeyStoreException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+	    
+	    
+	    
+	}
 	
 	public String encryptFiles(String filePaths, String targetUser) {
 	    String[] paths = filePaths.split(";");
 	    String result = "";
 
 	    try {
-	        KeyStore ks = KeyStore.getInstance("JKS");
+	        KeyStore ks = KeyStore.getInstance("PKCS12");
 	        try (FileInputStream fis = new FileInputStream("../keystore/keystore." + this.username)) {
 	            ks.load(fis, this.password.toCharArray());
 	        }
+	        System.out.println("okok");
 
 	        Certificate cert = ks.getCertificate(targetUser);
 	        if (cert == null) {
-	            System.err.println("ERRO: Certificado para " + targetUser + " não encontrado.");
-	            return "";
+
+	            System.out.println("ERROR(FIXABLE...): Certificate for " + targetUser + " is not in its keystore! ");
+	            System.out.println("FIXING...: Getting cert from server......");
+	            cert = receiveCert(ks);
+	            
 	        }
 	        PublicKey publicKey = cert.getPublicKey();
 
@@ -591,7 +697,7 @@ public class mySaude {
 	public void decryptFiles(String filePaths) {
 	    String[] paths = filePaths.split(";");
 	    try {
-	        KeyStore ks = KeyStore.getInstance("JKS");
+	        KeyStore ks = KeyStore.getInstance("PKCS12");
 	        try (FileInputStream fis = new FileInputStream("../keystore/keystore." + this.username)) {
 	            ks.load(fis, this.password.toCharArray());
 	        }
@@ -641,7 +747,7 @@ public class mySaude {
 	    StringBuilder result = new StringBuilder();
 
 	    try {
-	        KeyStore ks = KeyStore.getInstance("JKS");
+	        KeyStore ks = KeyStore.getInstance("PKCS12");
 	        try (FileInputStream fis = new FileInputStream("../keystore/keystore." + this.username)) {
 	            ks.load(fis, this.password.toCharArray());
 	        }
@@ -691,7 +797,7 @@ public class mySaude {
 	public void verifySignatures(String filePaths, String targetUser) {
 		String[] paths = filePaths.split(";");
 		try {
-			KeyStore ks = KeyStore.getInstance("JKS");
+			KeyStore ks = KeyStore.getInstance("PKCS12");
 			try (FileInputStream fis = new FileInputStream("../keystore/keystore." + this.username)) {
 				ks.load(fis, this.password.toCharArray());
 			}

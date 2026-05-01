@@ -19,6 +19,13 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateEncodingException;
+import java.security.cert.CertificateException;
+
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 
@@ -32,6 +39,8 @@ public class mySaudeServer{
 	private static final String OK_TO_SEND = "OK_TO_SEND";
 	private static final String CLIENT_FILE_EXISTS = "CLIENT_FILE_EXISTS";
 	private static final String FILE_INFO = "FILE_INFO";
+	
+	private static final String PATH_KEYSTORE = "../keystore/";
 	
 	private int port;
     public ObjectOutputStream objOut;
@@ -109,12 +118,16 @@ public class mySaudeServer{
 	            ObjectOutputStream outStream = new ObjectOutputStream(socket.getOutputStream());
 	            ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream());
 	           	            
-	            
+
+            	System.out.println("ENCRIPTAR");
 	            String option = (String) inStream.readObject();
+            	System.out.println("ENCRIPTAR");
 	            
 	            switch (option) {
 
 		            case "-e":
+		            	System.out.println("ENCRIPTAR");
+		            	break;
 		            case "-ce":
 		            case "-ae":
 		            case "-ace":
@@ -127,7 +140,9 @@ public class mySaudeServer{
 		            case "-rdv":
 		                sendFiles(inStream, outStream, "../servidor/");
 		                break;
-	
+		            case "GET_CERT":
+		            	sendCert(inStream, outStream);
+		            	break;
 		            default:
 		                System.out.println("Unknown operation: " + option);
 	            }
@@ -138,7 +153,13 @@ public class mySaudeServer{
 
 	        } catch (IOException | ClassNotFoundException e) {
 	            e.printStackTrace();
-	        }
+	        } catch (CertificateEncodingException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (KeyStoreException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 	    }
 	    private String getBaseName(String fileName) {
 	        if (fileName.endsWith(".cifrado")) {
@@ -151,6 +172,84 @@ public class mySaudeServer{
 	            return fileName.replace(".envelope", "");
 	        }
 	        return fileName;
+	    }
+	    private void sendCert(ObjectInputStream objIn, ObjectOutputStream objOut) throws KeyStoreException, CertificateEncodingException, IOException {
+	    	try {
+	    		String username = objIn.readUTF();
+	    		
+
+			    System.out.println("AHH");
+			    KeyStore ks = KeyStore.getInstance("PKCS12");
+			    File ksFile = new File(PATH_KEYSTORE + "keystore.users");
+			    System.out.println("BAHH");
+	    		if(!ksFile.exists()) {
+	    			objOut.writeUTF("NOT_FOUND");
+	    			objOut.flush();
+	    			return;
+	    		}else{
+				    System.out.println("CAHH");
+			        try (FileInputStream ksfis = new FileInputStream(ksFile)) {
+					    System.out.println("DAHH");
+
+					    char[] ksPassword = "password".toCharArray(); // Define uma pass para a KS
+			            ks.load(ksfis, ksPassword);
+					    System.out.println("FAHH");
+			        } catch (NoSuchAlgorithmException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (CertificateException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+	    		}
+			    System.out.println("GAHH");
+	    		Certificate cert = ks.getCertificate(username);
+	    		if(cert == null) {
+	    			objOut.writeUTF(FILE_NOT_FOUND_FLAG);
+	    			objOut.flush();
+	    	        return;
+	    		}
+	    		byte[] certBytes = cert.getEncoded();
+	    		
+	    		// enviar OK
+	    		objOut.writeUTF(OK);
+	    		objOut.flush();
+
+			    System.out.println("HAHH");
+	    		//resposta ao OK
+	    		String response = objIn.readUTF();
+	    		if(response == CLIENT_FILE_EXISTS) {
+	    			return;
+	    		}
+
+			    System.out.println("JAHH");
+			    
+	    		// enivar tamanho
+			    objOut.writeLong(certBytes.length);
+	    		objOut.flush();
+	    		
+	    		
+
+			    System.out.println("KAHH");
+	    		// enviar os bytes do certificado
+			    objOut.write(certBytes);
+			    objOut.flush();
+	    		
+	    		
+	    		System.out.println("CERT OF THE USER" + username);
+                System.out.println(cert);
+               
+                
+                
+	    	} catch (IOException e) {
+	            System.err.println("ERRO: A enviar ficheiros: " + e.getMessage());
+	            e.printStackTrace();
+	        } catch (KeyStoreException e) {
+	        	objOut.writeUTF(FILE_NOT_FOUND_FLAG);
+	        	objOut.flush();
+	            System.err.println("ERRO: The cert does NOT exist!");
+	        	
+	        }
 	    }
 	    
 	    private void sendFiles(ObjectInputStream objIn, ObjectOutputStream objOut, String baseFolder) {
