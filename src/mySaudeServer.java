@@ -25,6 +25,8 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.util.Base64;
+import java.util.Scanner;
+
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.SSLServerSocket;
@@ -110,7 +112,9 @@ public class mySaudeServer{
 		        System.out.println("Port must be a number!");
 		        return;
 		    }
-		    		    
+		    
+		    
+		    
 		    System.setProperty("javax.net.ssl.keyStore", "../keystore/keystore.server");
 		    System.setProperty("javax.net.ssl.keyStorePassword", "123456");
 		    System.setProperty("javax.net.ssl.keyStoreType", "PKCS12");
