@@ -1,10 +1,3 @@
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -12,13 +5,17 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
-
-import java.security.SecureRandom;
 import java.util.Base64;
-import java.security.MessageDigest;
-import java.util.Scanner; 
+import java.util.HashMap;
+import java.util.Map; 
+import java.util.Scanner;
+import java.util.Set;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec; 
 
 public class criarUser {
 

@@ -13,28 +13,22 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.FileWriter;
-import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Files;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
-
-import javax.net.ssl.SSLServerSocket;
-import javax.net.ssl.SSLServerSocketFactory;
-
-import java.nio.file.Files;
+import java.util.Base64;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-import java.util.Base64;
-import java.util.Scanner;
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
 
 
 public class mySaudeServer{
@@ -48,6 +42,7 @@ public class mySaudeServer{
 	private static final String FILE_INFO = "FILE_INFO";
 	
 	private static final String PATH_KEYSTORE = "../keystore/";
+	
 	
 	private int port;
     public ObjectOutputStream objOut;
@@ -115,7 +110,7 @@ public class mySaudeServer{
 		        System.out.println("Port must be a number!");
 		        return;
 		    }
-		    
+		    		    
 		    System.setProperty("javax.net.ssl.keyStore", "../keystore/keystore.server");
 		    System.setProperty("javax.net.ssl.keyStorePassword", "123456");
 		    System.setProperty("javax.net.ssl.keyStoreType", "PKCS12");
@@ -132,6 +127,9 @@ public class mySaudeServer{
 				}
 				System.out.println("servidor> Integridade do ficheiro validada com sucesso.");
 			}
+		    System.setProperty("javax.net.ssl.keyStore", "../keystore/keystore.server");
+		    System.setProperty("javax.net.ssl.keyStorePassword", "123456");
+		    System.setProperty("javax.net.ssl.keyStoreType", "PKCS12");
 		    server.startServer();
 	}
 
