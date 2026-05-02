@@ -1,6 +1,6 @@
 /***************************************************************************
 *   Seguranca Informatica
-*	Projeto 1:
+*	Projeto 2:
 *		- Guilherme Soares
 *		- Vitória Correia
 *		- Duarte Soares
@@ -67,16 +67,13 @@ public class mySaude {
 		    "-ace", "-rdv"
 		);
 	
-	private static final Set<String> NEEDS_PASSWORD = Set.of(
-		    "-c", "-d", "-ce", "-rd", "-a", "-v", "-ae", "-rv", "-ace", "-rdv"
-		);
 
 	private static final Set<String> NEEDS_RECEIVER = Set.of(
 	    "-e", "-c", "-ce", "-v", "-ae", "-rv", "-ace", "-rdv"
 	);
 
 	private static final Set<String> NEEDS_SERVER = Set.of(
-	    "-e", "-r", "-ce", "-rd", "-ae", "-rv", "-ace", "-rdv"
+	    "-e", "-r","-c" , "-d",  "-ce", "-rd", "-ae", "-rv", "-ace", "-rdv"
 	);
 
 	private static String isOption(String currentFlag, String fallback) {
@@ -103,7 +100,6 @@ public class mySaude {
 		try {
 			System.out.println("cliente> Inicializing...");
 			
-			configureClientTLS();
 			
 			Map<String, String> flags = argsMapping(args);
 	       
@@ -145,14 +141,11 @@ public class mySaude {
 	private static void validateRequiredFlags(String option) {
 	    String base = "The option " + option + " requires ";
 
-	    // -u | user is always required
+	    // -u -p| user and password is always required
 	    require(client.username != null, base + "-u.");
+	    require(client.password != null, base + "-p.");
 
-	    // -p | password required
-	    if (NEEDS_PASSWORD.contains(option)) {
-	        require(client.password != null, base + "-p.");
-	    }
-
+	    
 	    // -t |receiver required
 	    if (NEEDS_RECEIVER.contains(option)) {
 	        require(client.receiver != null, base + "-t.");
@@ -274,40 +267,46 @@ public class mySaude {
 	    return flags;
 	}
 	
-	public static String inicialize(Map<String, String> flags) throws ConnectException {
-		String option = null;
+    public static String inicialize(Map<String, String> flags) throws ConnectException {
+        String option = null;
+
+        // 1. Primeiro descobrir a opção
         for (String key : flags.keySet()) {
-        	switch (key) {
-	            // 1. Flags de Conexão e Identificação
-	            case "-s":
-	            	System.out.println(flags);
-	            	// ELIMINAR: se entretanto for necessario mais, adc aq
-	            	if(flags.containsKey("-d") || flags.containsKey("-c")) {
-	            		System.out.println("You are cyphering and decyphering... It's a local operation, you DO NOT need to connect to a server.\n");
-	            		break;
-	            	}
-	            	client.startClient(flags.get("-s").split(":"));
-	                break;
-	            case "-u":
-	                client.username = flags.get("-u");
-	                break;
-	            case "-p":
-	                client.password = flags.get("-p");
-	                break;
-	            case "-t":
-	                client.receiver = flags.get("-t");
-	                break;
-	            default:
-	            	//if not any of the others its the option!
-	            	if(option != null) {
-	            		throw new IllegalArgumentException("There can only be one option!\nWhat was flagged:\n\t " + option + "\n\t " + key);
-	            	}
-	        		option = key;
-            	
-        	}
+            if (OPTIONS.contains(key)) {
+                if (option != null) {
+                    throw new IllegalArgumentException(
+                        "There can only be one option!\nWhat was flagged:\n\t " + option + "\n\t " + key
+                    );
+                }
+                option = key;
+            }
         }
-		return option;
-	}
+
+        // 2. Guardar username/password/receiver
+        if (flags.containsKey("-u")) {
+            client.username = flags.get("-u");
+        }
+
+        if (flags.containsKey("-p")) {
+            client.password = flags.get("-p");
+        }
+
+        if (flags.containsKey("-t")) {
+            client.receiver = flags.get("-t");
+        }
+
+        // 3. Só configurar TLS e ligar se a opção precisar de servidor
+        if (NEEDS_SERVER.contains(option)) {
+            if (!flags.containsKey("-s")) {
+                throw new IllegalArgumentException("A opção " + option + " requer -s endereço:porto.");
+            }
+
+            configureClientTLS();
+            client.startClient(flags.get("-s").split(":"));
+        }
+
+        return option;
+    }
 	
 	private static String getBasePath() {
 	    return System.getProperty("user.home")
@@ -352,7 +351,7 @@ public class mySaude {
 	}
 
 	public void startClient(String[] address) throws ConnectException {
-	    System.out.println("-s: Difining servers Ip and port.");
+	    System.out.println("-s: Defining servers Ip and port.");
 
 	    int port;
 	    String ip;
@@ -383,13 +382,14 @@ public class mySaude {
 	         * Se a truststore não tiver o certificado do servidor,
 	         * ou se o caminho estiver errado, o erro aparece aqui.
 	         */
+	        sslSock.setEnabledProtocols(new String[] {"TLSv1.2", "TLSv1.3"});
 	        sslSock.startHandshake();
 
 	        client.sock = sslSock;
 
 	        SSLSession session = sslSock.getSession();
-	        System.out.println("TLS ativo: " + session.getCipherSuite());
-	        System.out.println("TLS servidor: " + session.getPeerHost());
+	        System.out.println("active TLS: " + session.getCipherSuite());
+	        System.out.println("TLS server: " + session.getPeerHost());
 	    	
 	        client.objOut = new ObjectOutputStream(client.sock.getOutputStream());
 	        client.objIn = new ObjectInputStream(client.sock.getInputStream());

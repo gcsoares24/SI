@@ -1,6 +1,6 @@
 /***************************************************************************
 *   Seguranca Informatica
-*	Projeto 1:
+*	Projeto 2:
 *		- Guilherme Soares
 *		- Vitória Correia
 *		- Duarte Soares
@@ -139,7 +139,7 @@ public class mySaudeServer{
 		
 		String keyStorePassword = readPassword("server> Enter server keystore password: ");
 
-	    System.setProperty("javax.net.ssl.keystore", trustStoreFile.getAbsolutePath());
+	    System.setProperty("javax.net.ssl.keyStore", trustStoreFile.getAbsolutePath());
 		System.setProperty("javax.net.ssl.keyStorePassword", keyStorePassword);
 		System.setProperty("javax.net.ssl.keyStoreType", "PKCS12");
 		
@@ -177,7 +177,10 @@ public class mySaudeServer{
 		    SSLServerSocketFactory ssf =
 		        (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
 
+		 // In mySaudeServer.java inside startServer()
 		    sSoc = (SSLServerSocket) ssf.createServerSocket(port);
+		    
+		    sSoc.setEnabledProtocols(new String[] {"TLSv1.2", "TLSv1.3"});
 		    
 		    System.out.println("servidor> TLS is active.Listening at the port: " + port + "...");
 		} catch (IOException e) {
@@ -221,7 +224,6 @@ public class mySaudeServer{
 	            switch (option) {
 
 		            case "-e":
-		            	break;
 		            case "-ce":
 		            case "-ae":
 		            case "-ace":

@@ -1,3 +1,13 @@
+/***************************************************************************
+*   Seguranca Informatica
+*	Projeto 2:
+*		- Guilherme Soares
+*		- Vitória Correia
+*		- Duarte Soares
+*
+*	mySaude.java
+*
+***************************************************************************/
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
