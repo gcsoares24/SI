@@ -5,7 +5,7 @@ COMO EXECUTAR
 
 1. Compilar
 
-(na pasta onde estão os ficheiros .java)
+(na pasta onde estão os ficheiros .java, o /src)
 
 javac *.java
 
@@ -18,6 +18,8 @@ Exemplo:
 java mySaudeServer 12345
 
 
+depois aparecerá para inserir duas password, que são: 123456
+
 3. Executar o cliente
 
 Formato geral:
@@ -25,6 +27,8 @@ java mySaude -s <ip>:<porto> -u <username> [opções]
 
 Exemplo:
 java mySaude -s 127.0.0.1:12345 -u user1 ...
+
+pedirá uma password: 123456
 
 
 4. Estrutura necessária
@@ -35,13 +39,10 @@ Devem existir as pastas:
 ../eu/
 ../keystore/
 
-No servidor já existem as pastas dos utilizadores:
+No src, para criar os users:
 
-../servidor/user1/
-../servidor/user2/
-
-Keystores:
-../keystore/keystore.<username>
+java criarUser user1 medico user11 -f user1.cer
+java criarUser user2 utente user22 -f user2.cer
 
 
 5. Preparação das keystores e utilizadores (OBRIGATÓRIO)
@@ -55,7 +56,6 @@ As keystores encontram-se em:
 ../keystore/keystore.user1
 ../keystore/keystore.user2
 
-Os certificados entre os utilizadores já foram importados.
 
 Caso se pretenda criar novos utilizadores:
 
@@ -71,13 +71,13 @@ bash importar_certs.sh <user_from> <user_to> <password_to>
 Legenda:
 - <path_ficheiro> → caminho local (relativo ou absoluto)
 - <nome_ficheiro> → apenas nome (ficheiro no servidor)
-
+- o combo  -u <user>-p <password>, tem de pertencer a um dos users criados com o criarUser
 
 Enviar ficheiros:
-java mySaude -s <ip>:<porto> -u <user> -e <path_ficheiros> -t <destinatario>
+java mySaude -s <ip>:<porto> -u <user>-p <password> -e <path_ficheiros> -t <destinatario>
 
 Receber ficheiros:
-java mySaude -s <ip>:<porto> -u <user> -r <nome_ficheiros>
+java mySaude -s <ip>:<porto> -u <user>-p <password> -r <nome_ficheiros>
 
 Cifrar:
 java mySaude -u <user> -p <password> -c <path_ficheiros> -t <destinatario>
@@ -113,6 +113,7 @@ Receber + decifrar + verificar:
 java mySaude -s <ip>:<porto> -u <user> -p <password> -rdv <nome_ficheiros> -t <assinante>
 
 Nota: neste comando indica-se apenas o nome do ficheiro original. O programa vai buscar automaticamente os ficheiros associados no servidor (.envelope, .chave e .assinatura).
+
 
 7. Ficheiros de teste
 
