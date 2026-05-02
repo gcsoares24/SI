@@ -395,7 +395,6 @@ public class mySaude {
 	         * Se a truststore não tiver o certificado do servidor,
 	         * ou se o caminho estiver errado, o erro aparece aqui.
 	         */
-	        sslSock.setEnabledProtocols(new String[] {"TLSv1.2", "TLSv1.3"});
 	        sslSock.startHandshake();
 
 	        client.sock = sslSock;

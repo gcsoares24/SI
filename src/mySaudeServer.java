@@ -183,7 +183,6 @@ public class mySaudeServer{
 		 // In mySaudeServer.java inside startServer()
 		    sSoc = (SSLServerSocket) ssf.createServerSocket(port);
 		    
-		    sSoc.setEnabledProtocols(new String[] {"TLSv1.2", "TLSv1.3"});
 		    
 		    System.out.println("servidor> TLS is active.Listening at the port: " + port + "...");
 		} catch (IOException e) {
