@@ -9,10 +9,12 @@
 *
 ***************************************************************************/
 
+import java.io.BufferedReader;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -20,6 +22,7 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
@@ -212,6 +215,75 @@ public class mySaudeServer{
 	        socket = inSoc;
 	        System.out.println("serverThreat for each client...");
 	    }
+	    private boolean autenticarUtilizador(ObjectInputStream objIn, ObjectOutputStream objOut, String option) {
+	        try {
+	            // 1. Verificar o MAC antes de qualquer acesso ao ficheiro (Alínea B)
+	            // macPassword é a variável static lida no main
+	            if (!verificarMac(macPassword)) {
+	                System.err.println("ERRO: Ficheiro de passwords adulterado!");
+	                objOut.writeObject("ERRO_MAC");
+	                objOut.flush();
+	                return false;
+	            }
+
+	            // 2. Ler credenciais enviadas pelo cliente (Alínea A)
+	            String user = objIn.readUTF();
+	            String pass = (String) objIn.readObject();
+
+	            boolean authenticated = false;
+	            String role = "";
+
+	            // 3. Procurar utilizador e validar password
+	            try (BufferedReader reader = new BufferedReader(new FileReader(USERS_FILE))) {
+	                String line;
+	                while ((line = reader.readLine()) != null) {
+	                    String[] parts = line.split(":");
+	                    if (parts[0].equals(user)) {
+	                        // Formato esperado: username:role:salt:hash
+	                        byte[] salt = Base64.getDecoder().decode(parts[2]);
+	                        String storedHash = parts[3];
+
+	                        // Calcular hash da password recebida
+	                        MessageDigest md = MessageDigest.getInstance("SHA-256");
+	                        md.update(salt);
+	                        byte[] hashCalculado = md.digest(pass.getBytes());
+	                        String encodedHash = Base64.getEncoder().encodeToString(hashCalculado);
+
+	                        if (encodedHash.equals(storedHash)) {
+	                            authenticated = true;
+	                            role = parts[1];
+	                        }
+	                        break;
+	                    }
+	                }
+	            }
+
+	            // 4. Validações finais
+	            if (!authenticated) {
+	                objOut.writeObject("ERRO_LOGIN");
+	                objOut.flush();
+	                return false;
+	            }
+
+	            // 5. Controlo de Acesso (Alínea F)
+	            // Apenas médicos podem usar as opções de envio (-e, -ce, -ae, -ace)
+	            if ((option.equals("-e") || option.equals("-ce") || option.equals("-ae") || option.equals("-ace")) 
+	                && !role.equals("medico")) {
+	                objOut.writeObject("ERRO_PERMISSAO");
+	                objOut.flush();
+	                return false;
+	            }
+
+	            // Se tudo estiver OK
+	            objOut.writeObject("OK");
+	            objOut.flush();
+	            return true;
+
+	        } catch (Exception e) {
+	            System.err.println("Erro na autenticação: " + e.getMessage());
+	            return false;
+	        }
+	    }
 
 	    public void run() {
 	        try {
@@ -220,7 +292,10 @@ public class mySaudeServer{
 	           	            
 
 	            String option = (String) inStream.readObject();
-	            
+	            if (!autenticarUtilizador(inStream, outStream, option)) {
+	            	socket.close();
+	                return; 
+	            }
 	            switch (option) {
 
 		            case "-e":
@@ -430,12 +505,17 @@ public class mySaudeServer{
 	    private void receiveFiles(ObjectInputStream objIn, ObjectOutputStream objOut, String destFolder) {
 	        try {
 	            boolean previousWasSignature = false;
-	        	
+	            
+	            // fim verificar medico
+	            
+	            
 	            int numFiles = objIn.readInt();
 	            System.out.println("Receiving " + numFiles + " file(s).");
 
 	            String receiver = objIn.readUTF();
 	            destFolder += receiver;
+	            
+	            
 
 	            File folder = new File(destFolder);
 

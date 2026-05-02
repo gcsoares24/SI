@@ -113,12 +113,25 @@ public class mySaude {
             
             //sends only server type of operation
             if (SERVER_OPTIONS.contains(option)) {
-            	if (client.objOut == null) {
+                if (client.objOut == null) {
                     throw new IllegalArgumentException("The option " + option + " requires connection to the server (-s).");
                 }
-            	
-            	client.objOut.writeObject(option);
+                
+                // Enviar Opção
+                client.objOut.writeObject(option);
                 client.objOut.flush();
+
+                // NOVO: Enviar login para o servidor
+                client.objOut.writeUTF(client.username);
+                client.objOut.writeObject(client.password);
+                client.objOut.flush();
+
+                // NOVO: Validar resposta do login
+                String res = (String) client.objIn.readObject();
+                if (!res.equals("OK")) {
+                    System.out.println("Acesso Negado pelo Servidor: " + res);
+                    return; // Aborta a operação se não houver permissão ou login falhar
+                }
             }
             
             switchCase(option, flags.get(option));
@@ -422,6 +435,7 @@ public class mySaude {
 	    String[] paths = filePaths.split(";");
 
 	    try {
+	    	
 	        // fase 1: enviar metadados iniciais
 	        client.objOut.writeInt(paths.length);
 	        client.objOut.flush();
@@ -865,9 +879,12 @@ public class mySaude {
 
 			Certificate cert = ks.getCertificate(targetUser);
 			if (cert == null) {
-				System.err.println("ERRO: Cert of the user, '" + targetUser + "', was not found in the keystore.");
-				return;
-			}
+
+	            System.out.println("ERROR(FIXABLE...): Certificate for " + targetUser + " is not in its keystore! ");
+	            System.out.println("FIXING...: Getting cert from server......");
+	            cert = receiveCert(ks);
+	            
+	        }
 			PublicKey publicKey = cert.getPublicKey();
 
 			for (String path : paths) {

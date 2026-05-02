@@ -247,6 +247,9 @@ public class criarUser {
 	        );
 	    }
 	    String username = args[0];
+	    if(username.contains(":")) {
+            System.err.println("error> The username should not contain ':'.");
+	    }
 	    String function = args[1];
 	    if(!FUNCTIONS.contains(function)) {
             System.err.println("erro> The function should be: 'medico' or 'utente'.");
@@ -260,6 +263,7 @@ public class criarUser {
 	    String certFile = keyStore + args[4];
 
 	    map.put("username", username);
+	    
 	    map.put("function", function);
 	    
 	    map.put("password", password);

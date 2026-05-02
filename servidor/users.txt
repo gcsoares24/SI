@@ -1,3 +1,2 @@
-user1:utente:nf8mWpVyRa/kp08inJtCaw==:7vMvVlzg+VMhC2Bgu//DZUic+jdOpz7ZbEix2Dcksd8=
-user2:medico:2kPmFgi7/gx4UwDROXr74g==:iaMhd0iw781/y7f5nCmZc6O17ho5Hn4fh+OITek5EVs=
-vivi:utente:3CmJ2ZT+K4sRJU/3Ag+KhA==:zgJL+eR4VZsQiOQfVCZ59NNokbBKed6nOZhN9prvRZA=
+user1:medico:yn7YnFUBcUN++DUgV3dtCA==:LJuuABiinljAbQuPhO9OZ076hetEEr9CDqWxmPZ/Ayg=
+user2:medico:CYWocUuFu3t/9jjVgfj6pg==:ofoG/vatSoJyw6UD2KQzBD2RHKEqsFwcYMCBjtXI3WY=
