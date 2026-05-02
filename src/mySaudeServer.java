@@ -111,12 +111,6 @@ public class mySaudeServer{
 		        System.out.println("Port must be a number!");
 		        return;
 		    }
-		    
-		    
-		    
-		    System.setProperty("javax.net.ssl.keyStore", "../keystore/keystore.server");
-		    System.setProperty("javax.net.ssl.keyStorePassword", "123456");
-		    System.setProperty("javax.net.ssl.keyStoreType", "PKCS12");
 			
 			Scanner scanner = new Scanner(System.in);
 			System.out.print("servidor> Introduza a password do MAC do servidor para iniciar: ");
