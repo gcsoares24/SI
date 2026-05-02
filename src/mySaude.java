@@ -327,11 +327,28 @@ public class mySaude {
 	        );
 	    }
 
+	    String trustStorePassword = readPassword("Password da truststore do cliente: ");
+
 	    System.setProperty("javax.net.ssl.trustStore", trustStoreFile.getAbsolutePath());
-	    System.setProperty("javax.net.ssl.trustStorePassword", "123456");
+	    System.setProperty("javax.net.ssl.trustStorePassword", trustStorePassword);
 	    System.setProperty("javax.net.ssl.trustStoreType", "PKCS12");
 
 	    System.out.println("TLS> truststore usada: " + trustStoreFile.getAbsolutePath());
+	}
+	
+	private static String readPassword(String prompt) {
+	    if (System.console() != null) {
+	        return new String(System.console().readPassword(prompt));
+	    }
+
+	    System.out.print(prompt);
+	    try {
+	        byte[] buffer = new byte[128];
+	        int len = System.in.read(buffer);
+	        return new String(buffer, 0, len).trim();
+	    } catch (IOException e) {
+	        throw new RuntimeException("Erro ao ler password.", e);
+	    }
 	}
 
 	public void startClient(String[] address) throws ConnectException {

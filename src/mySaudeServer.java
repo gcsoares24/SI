@@ -69,10 +69,27 @@ public class mySaudeServer{
 		        return;
 		    }
 		    
+		    String keyStorePassword = readPassword("Password da keystore do servidor: ");
+
 		    System.setProperty("javax.net.ssl.keyStore", "../keystore/keystore.server");
-		    System.setProperty("javax.net.ssl.keyStorePassword", "123456");
+		    System.setProperty("javax.net.ssl.keyStorePassword", keyStorePassword);
 		    System.setProperty("javax.net.ssl.keyStoreType", "PKCS12");
 		    server.startServer();
+	}
+	
+	private static String readPassword(String prompt) {
+	    if (System.console() != null) {
+	        return new String(System.console().readPassword(prompt));
+	    }
+
+	    System.out.print(prompt);
+	    try {
+	        byte[] buffer = new byte[128];
+	        int len = System.in.read(buffer);
+	        return new String(buffer, 0, len).trim();
+	    } catch (IOException e) {
+	        throw new RuntimeException("Erro ao ler password.", e);
+	    }
 	}
 
 	public void startServer () throws IOException{
@@ -83,6 +100,8 @@ public class mySaudeServer{
 		        (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
 
 		    sSoc = (SSLServerSocket) ssf.createServerSocket(port);
+		    
+		    System.out.println("servidor> TLS ativo. À escuta no porto " + port + "...");
 		} catch (IOException e) {
 			System.err.println(e.getMessage());
 			System.exit(-1);
