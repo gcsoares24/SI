@@ -88,63 +88,86 @@ public class mySaudeServer{
 	    }
 	}
 
-	
-	public static void main(String[] args) throws IOException {
-		System.out.println("servidor: main");
-		mySaudeServer server = new mySaudeServer();
-		 if (args.length < 1) {
-		        System.out.println("Usage: java mySaudeServe <port>");
-		        return;
-		    }
-
-		    try {
-		        int port = Integer.parseInt(args[0]);
-
-		        if (port < 1 || port > 65535) {
-		            System.out.println("Invalid port! Must be 1-65535.");
-		            return;
-		        }
-
-		        server.port = port;
-
-		    } catch (NumberFormatException e) {
-		        System.out.println("Port must be a number!");
-		        return;
-		    }
-			
-			Scanner scanner = new Scanner(System.in);
-			System.out.print("servidor> Introduza a password do MAC do servidor para iniciar: ");
-			macPassword = scanner.nextLine();
-
-			if (new File(USERS_FILE).exists()) {
-				// ATUALIZADO AQUI para verificarMac
-				if (!verificarMac(macPassword)) {
-					System.err.println("ERRO FATAL: MAC inválido. O ficheiro de passwords foi adulterado!");
-					System.exit(-1); 
-				}
-				System.out.println("servidor> Integridade do ficheiro validada com sucesso.");
-			}
-		    String keyStorePassword = readPassword("Password da keystore do servidor: ");
-
-		    System.setProperty("javax.net.ssl.keyStore", "../keystore/keystore.server");
-		    System.setProperty("javax.net.ssl.keyStorePassword", keyStorePassword);
-		    System.setProperty("javax.net.ssl.keyStoreType", "PKCS12");
-		    server.startServer();
+	private static String getBasePath() {
+	    return System.getProperty("user.home")
+	            + File.separator + "mySaude";	            
 	}
-	
-	private static String readPassword(String prompt) {
-	    if (System.console() != null) {
-	        return new String(System.console().readPassword(prompt));
-	    }
+	public static void main(String[] args) throws IOException {
+		System.out.println("server: main");
+		mySaudeServer server = new mySaudeServer();
+		
+		if (args.length < 1) {
+			System.out.println("Usage: java mySaudeServer <port>");
+			return;
+		}
 
-	    System.out.print(prompt);
-	    try {
-	        byte[] buffer = new byte[128];
-	        int len = System.in.read(buffer);
-	        return new String(buffer, 0, len).trim();
-	    } catch (IOException e) {
-	        throw new RuntimeException("Erro ao ler password.", e);
+		try {
+			int port = Integer.parseInt(args[0]);
+			if (port < 1 || port > 65535) {
+				System.out.println("Invalid port! Must be 1-65535.");
+				return;
+			}
+			server.port = port;
+		} catch (NumberFormatException e) {
+			System.out.println("Port must be a number!");
+			return;
+		}
+
+		// 1. Pedir a password do MAC usando o método seguro
+		macPassword = readPassword("server> Enter server MAC password to start: ");
+
+		if (new File(USERS_FILE).exists()) {
+			// ATUALIZADO AQUI para verificarMac
+			if (!verificarMac(macPassword)) {
+				System.err.println("FATAL ERROR: Invalid MAC. The password file has been tampered with!");
+				System.exit(-1); 
+			}
+			System.out.println("server> File integrity validated successfully.");
+		}
+
+		// 2. Pedir a password da Keystore usando o método seguro
+		String keystorePath = getBasePath() + File.separator + "keystore" + File.separator + "keystore.server";
+
+	    File trustStoreFile = new File(keystorePath);
+
+	    if (!trustStoreFile.exists()) {
+	        throw new IllegalArgumentException(
+	            "ERRO TLS: servers keystore was not found at: " + keystorePath +
+	            "\nPlace keystore.server in there and try again."
+	        );
 	    }
+		
+		String keyStorePassword = readPassword("server> Enter server keystore password: ");
+
+	    System.setProperty("javax.net.ssl.keystore", trustStoreFile.getAbsolutePath());
+		System.setProperty("javax.net.ssl.keyStorePassword", keyStorePassword);
+		System.setProperty("javax.net.ssl.keyStoreType", "PKCS12");
+		
+		server.startServer();
+	}
+
+	/**
+	 * Método auxiliar para ler passwords de forma segura (sem eco no terminal)
+	 * Mantém compatibilidade com IDEs e terminais (WSL/Linux)
+	 */
+	private static String readPassword(String prompt) {
+		// Tenta usar a consola do sistema para esconder os carateres
+		if (System.console() != null) {
+			char[] passwordChars = System.console().readPassword(prompt);
+			return new String(passwordChars);
+		}
+
+		// Fallback para quando a consola não está disponível (ex: Eclipse, IntelliJ)
+		System.out.print(prompt);
+		try {
+			Scanner sc = new Scanner(System.in);
+			if (sc.hasNextLine()) {
+				return sc.nextLine();
+			}
+			return "";
+		} catch (Exception e) {
+			throw new RuntimeException("FATAL ERROR: Could not read password from input.", e);
+		}
 	}
 
 	public void startServer () throws IOException{
@@ -156,7 +179,7 @@ public class mySaudeServer{
 
 		    sSoc = (SSLServerSocket) ssf.createServerSocket(port);
 		    
-		    System.out.println("servidor> TLS ativo. À escuta no porto " + port + "...");
+		    System.out.println("servidor> TLS is active.Listening at the port: " + port + "...");
 		} catch (IOException e) {
 			System.err.println(e.getMessage());
 			System.exit(-1);
@@ -184,7 +207,7 @@ public class mySaudeServer{
 
 	    ServerThread(Socket inSoc) {
 	        socket = inSoc;
-	        System.out.println("thread do server para cada cliente");
+	        System.out.println("serverThreat for each client...");
 	    }
 
 	    public void run() {
@@ -193,14 +216,11 @@ public class mySaudeServer{
 	            ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream());
 	           	            
 
-            	System.out.println("ENCRIPTAR");
 	            String option = (String) inStream.readObject();
-            	System.out.println("ENCRIPTAR");
 	            
 	            switch (option) {
 
 		            case "-e":
-		            	System.out.println("ENCRIPTAR");
 		            	break;
 		            case "-ce":
 		            case "-ae":
@@ -252,22 +272,19 @@ public class mySaudeServer{
 	    		String username = objIn.readUTF();
 	    		
 
-			    System.out.println("AHH");
 			    KeyStore ks = KeyStore.getInstance("PKCS12");
 			    File ksFile = new File(PATH_KEYSTORE + "keystore.users");
-			    System.out.println("BAHH");
+			    
 	    		if(!ksFile.exists()) {
 	    			objOut.writeUTF("NOT_FOUND");
 	    			objOut.flush();
 	    			return;
 	    		}else{
-				    System.out.println("CAHH");
 			        try (FileInputStream ksfis = new FileInputStream(ksFile)) {
-					    System.out.println("DAHH");
-
+					    
 					    char[] ksPassword = "password".toCharArray(); // Define uma pass para a KS
 			            ks.load(ksfis, ksPassword);
-					    System.out.println("FAHH");
+					    
 			        } catch (NoSuchAlgorithmException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -276,7 +293,6 @@ public class mySaudeServer{
 						e.printStackTrace();
 					}
 	    		}
-			    System.out.println("GAHH");
 	    		Certificate cert = ks.getCertificate(username);
 	    		if(cert == null) {
 	    			objOut.writeUTF(FILE_NOT_FOUND_FLAG);
@@ -289,14 +305,12 @@ public class mySaudeServer{
 	    		objOut.writeUTF(OK);
 	    		objOut.flush();
 
-			    System.out.println("HAHH");
 	    		//resposta ao OK
 	    		String response = objIn.readUTF();
 	    		if(response == CLIENT_FILE_EXISTS) {
 	    			return;
 	    		}
 
-			    System.out.println("JAHH");
 			    
 	    		// enivar tamanho
 			    objOut.writeLong(certBytes.length);
@@ -304,7 +318,6 @@ public class mySaudeServer{
 	    		
 	    		
 
-			    System.out.println("KAHH");
 	    		// enviar os bytes do certificado
 			    objOut.write(certBytes);
 			    objOut.flush();
@@ -316,7 +329,7 @@ public class mySaudeServer{
                 
                 
 	    	} catch (IOException e) {
-	            System.err.println("ERRO: A enviar ficheiros: " + e.getMessage());
+	            System.err.println("ERROR:While trying to Sending the files: " + e.getMessage());
 	            e.printStackTrace();
 	        } catch (KeyStoreException e) {
 	        	objOut.writeUTF(FILE_NOT_FOUND_FLAG);
@@ -364,12 +377,12 @@ public class mySaudeServer{
 	                String clientResponse = (String) objIn.readObject();
 
 	                if (clientResponse.equals(CLIENT_FILE_EXISTS)) {
-	                    System.out.println("ERRO: ficheiro já existe do lado do cliente: " + fileName);
+	                    System.out.println("ERROR: The file already exists in the client side: " + fileName);
 	                    continue;
 	                }
 
 	                if (!clientResponse.equals(OK_TO_SEND)) {
-	                    System.out.println("Resposta inválida do cliente para o ficheiro: " + fileName);
+	                    System.out.println("Invalid response from the client for the file: " + fileName);
 	                    continue;
 	                }
 
@@ -383,11 +396,11 @@ public class mySaudeServer{
 	                    objOut.flush();
 	                }
 
-	                System.out.println("Ficheiro enviado com sucesso: " + file.getAbsolutePath());
+	                System.out.println("File send with sucess: " + file.getAbsolutePath());
 	            }
 
 	        } catch (IOException | ClassNotFoundException e) {
-	            System.err.println("ERRO: A enviar ficheiros: " + e.getMessage());
+	            System.err.println("ERROR: While trying to send the files: " + e.getMessage());
 	            e.printStackTrace();
 	        }
 	    }
@@ -426,7 +439,7 @@ public class mySaudeServer{
 
 	           
 	            if (!folder.exists() || !folder.isDirectory()) {
-	                System.out.println("ERRO: diretoria do utilizador '" + receiver + "' não existe no servidor.");
+	                System.out.println("ERROR: The directory of the user '" + receiver + "' doesnt exist in the server.");
 
 	                objOut.writeObject(NO_DIRECTORY);
 	                objOut.flush();
@@ -444,7 +457,7 @@ public class mySaudeServer{
 	                
 	                if (fileName.equals(FILE_NOT_FOUND_FLAG)) {
 	                    String originalPath = (String) objIn.readObject();
-	                    System.out.println("ERRO: ficheiro não existe do lado do cliente: " + originalPath);
+	                    System.out.println("ERROR: The file DOES NOT exist on the client side: " + originalPath);
 	                    continue;
 	                }
 	                File file;
@@ -455,7 +468,7 @@ public class mySaudeServer{
 	                destPath = destFolder + "/" + baseName;	
 	                file = new File(destPath);
 	                if (fileExists(destPath)) {
-	                    System.out.println("ERRO: O ficheiro " + fileName + " ou alguma das suas variacoes, já existe no servidor");
+	                    System.out.println("ERROR:The file " + fileName + " or any of its variations, already exists on the server.");
 
 	                    objOut.writeObject(SERVER_FILE_EXISTS);
 	                    objOut.flush();
@@ -495,7 +508,7 @@ public class mySaudeServer{
 	                        int bytesRead = objIn.read(buffer, 0, (int)Math.min(buffer.length, remaining));
 
 	                        if (bytesRead == -1) {
-	                            throw new EOFException("ERRO: Fim inesperado ao receber ficheiro " + fileName);
+	                            throw new EOFException("ERROR: Non expected error from the server, while retrieving the file: " + fileName);
 	                        }
 
 	                        fos.write(buffer, 0, bytesRead);
@@ -503,13 +516,13 @@ public class mySaudeServer{
 	                    }
 	                }
 
-	                System.out.println("Ficheiro recebido com sucesso: " + destPath);
+	                System.out.println("File retrieved with success: " + destPath);
 	            }
 
 	        } catch (EOFException e) {
-	            System.err.println("ERRO: Fim inesperado da comunicação.");
+	            System.err.println("ERROR: Unexpected end of connection.");
 	        } catch (IOException | ClassNotFoundException e) {
-	            System.err.println("ERRO: A receber ficheiros: " + e.getMessage());
+	            System.err.println("ERROR: Non expected error from the server, while retrieving the file: " + e.getMessage());
 	            e.printStackTrace();
 	        }
 	    }

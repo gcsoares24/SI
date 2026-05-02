@@ -117,7 +117,7 @@ public class criarUser {
 			// Verifica a integridade antes de fazer o que quer que seja
 			if (new File("../servidor/users.txt").exists()) {
                 if (!verificarMac(macPassword)) { // <-- Alterado de MacHelper para mySaudeServer
-                    System.out.println("erro FATAL> O ficheiro users.txt foi adulterado ou a password MAC está errada!");
+                    System.out.println("FATAL error> The file users.txt was altered or the password for the MAC is wrong!");
                     return; // Pára imediatamente a execução
                 }
             }
@@ -133,7 +133,7 @@ public class criarUser {
 			    // 1. Ler o certificado 
 			    CertificateFactory cf = CertificateFactory.getInstance("X.509");
 			    Certificate cert = cf.generateCertificate(fis);
-			    System.out.println("system> Certificado lido com sucesso!");
+			    System.out.println("system> Cert read with success!");
 
 			    // 2. Lógica da KeyStore
 			    java.security.KeyStore ks = java.security.KeyStore.getInstance("PKCS12");
@@ -163,7 +163,7 @@ public class criarUser {
 			    // 4. Gravar a KeyStore no disco
 			    try (java.io.FileOutputStream fos = new java.io.FileOutputStream(ksPath)) {
 			        ks.store(fos, ksPassword);
-			        System.out.println("system> Certificado guardado em keystore.users com sucesso!");
+			        System.out.println("system> Cert added to keystore.users with success!");
 			    }
 			    
 			    // 5. criar pasta do user
@@ -172,16 +172,16 @@ public class criarUser {
 			    if (!userDir.exists()) {
 			        boolean created = userDir.mkdirs(); // mkdirs() cria também pastas pai se necessário
 			        if (created) {
-			            System.out.println("system> Diretoria criada para o utilizador: " + userDir.getPath());
+			            System.out.println("system> Created a directory for the user: " + userDir.getPath());
 			        } else {
-			        	throw new IllegalArgumentException("erro> Não foi possível criar a diretoria para o utilizador.");
+			        	throw new IllegalArgumentException("error> it was not possible to create the users directory.");
 			        }
 			    } else {
-			        System.out.println("system> A diretoria do utilizador já existe.");
+			        System.out.println("system> The users directory alrady exists..");
 			    }
 			    
 			} catch (Exception e) {
-			    System.err.println("erro> Falha na gestão da KeyStore: " + e.getMessage());
+			    System.err.println("erro> Failed in manging the keystore: " + e.getMessage());
 			    throw e;
 			}
 			
@@ -220,7 +220,7 @@ public class criarUser {
 
             // --- INÍCIO DA ALÍNEA B (Atualizar MAC) ---
             atualizarMac(macPassword); 
-            System.out.println("system> Ficheiro mySaude.mac atualizado com sucesso!");
+            System.out.println("system> The file mySaude.mac updated with success!");
             // --- FIM DA ALÍNEA B ---
 
 		 } catch (Exception e) {
