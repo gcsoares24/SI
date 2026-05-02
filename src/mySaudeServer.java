@@ -115,6 +115,8 @@ public class mySaudeServer{
 			Scanner scanner = new Scanner(System.in);
 			System.out.print("servidor> Introduza a password do MAC do servidor para iniciar: ");
 			macPassword = scanner.nextLine();
+			
+			
 
 			if (new File(USERS_FILE).exists()) {
 				// ATUALIZADO AQUI para verificarMac
