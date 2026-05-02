@@ -17,6 +17,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.FileWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.KeyStore;
@@ -28,6 +29,12 @@ import java.security.cert.CertificateException;
 
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
+
+import java.nio.file.Files;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.util.Base64;
+import java.util.Scanner;
 
 
 public class mySaudeServer{
@@ -45,6 +52,55 @@ public class mySaudeServer{
 	private int port;
     public ObjectOutputStream objOut;
     public ObjectInputStream objIn;
+
+	// MAC Logic Variables
+	public static String macPassword; 
+	private static final String USERS_FILE = "../servidor/users.txt";
+	private static final String MAC_FILE = "../servidor/mySaude.mac";
+
+	// 1. Calcula o MAC do ficheiro atual usando a password inserida
+	public static String calcularMac(String password) throws Exception {
+	    File f = new File(USERS_FILE);
+	    if (!f.exists()) return ""; 
+
+	    byte[] fileBytes = Files.readAllBytes(f.toPath());
+	    byte[] passBytes = password.getBytes();
+	    
+	    SecretKeySpec key = new SecretKeySpec(passBytes, "HmacSHA256");
+	    Mac mac = Mac.getInstance("HmacSHA256");
+	    mac.init(key);
+	    
+	    byte[] macBytes = mac.doFinal(fileBytes);
+	    return Base64.getEncoder().encodeToString(macBytes);
+	}
+
+	// 2. Verifica se o MAC guardado bate certo com o ficheiro atual
+	public static boolean verificarMac(String password) {
+	    try {
+	        File macFile = new File(MAC_FILE);
+	        File usersFile = new File(USERS_FILE);
+	        
+	        if (!usersFile.exists() && !macFile.exists()) return true; 
+	        if (usersFile.exists() && !macFile.exists()) return false; 
+	        
+	        String macGuardado = new String(Files.readAllBytes(macFile.toPath())).trim();
+	        String macCalculado = calcularMac(password);
+	        
+	        return macGuardado.equals(macCalculado);
+	    } catch (Exception e) {
+	        return false;
+	    }
+	}
+
+	// 3. Atualiza/Cria o ficheiro mySaude.mac
+	public static void atualizarMac(String password) throws Exception {
+	    String novoMac = calcularMac(password);
+	    if (!novoMac.isEmpty()) {
+	        try (FileWriter writer = new FileWriter(MAC_FILE)) {
+	            writer.write(novoMac);
+	        }
+	    }
+	}
 	
 	public static void main(String[] args) throws IOException {
 		System.out.println("servidor: main");
@@ -72,6 +128,19 @@ public class mySaudeServer{
 		    System.setProperty("javax.net.ssl.keyStore", "../keystore/keystore.server");
 		    System.setProperty("javax.net.ssl.keyStorePassword", "123456");
 		    System.setProperty("javax.net.ssl.keyStoreType", "PKCS12");
+			
+			Scanner scanner = new Scanner(System.in);
+			System.out.print("servidor> Introduza a password do MAC do servidor para iniciar: ");
+			macPassword = scanner.nextLine();
+
+			if (new File(USERS_FILE).exists()) {
+				// ATUALIZADO AQUI para verificarMac
+				if (!verificarMac(macPassword)) {
+					System.err.println("ERRO FATAL: MAC inválido. O ficheiro de passwords foi adulterado!");
+					System.exit(-1); 
+				}
+				System.out.println("servidor> Integridade do ficheiro validada com sucesso.");
+			}
 		    server.startServer();
 	}
 

@@ -67,11 +67,11 @@ public class criarUser {
 
 			// Verifica a integridade antes de fazer o que quer que seja
 			if (new File("../servidor/users.txt").exists()) {
-			    if (!MacHelper.verificarMac(macPassword)) {
-			        System.out.println("erro FATAL> O ficheiro users.txt foi adulterado ou a password MAC está errada!");
-			        return; // Pára imediatamente a execução
-			    }
-			}
+                if (!mySaudeServer.verificarMac(macPassword)) { // <-- Alterado de MacHelper para mySaudeServer
+                    System.out.println("erro FATAL> O ficheiro users.txt foi adulterado ou a password MAC está errada!");
+                    return; // Pára imediatamente a execução
+                }
+            }
 			// --- FIM DA ALÍNEA B ---
 
 			System.out.println("system> creating user...");
@@ -170,7 +170,7 @@ public class criarUser {
             System.out.println("system> user inserted into users.txt");
 
             // --- INÍCIO DA ALÍNEA B (Atualizar MAC) ---
-            MacHelper.atualizarMac(macPassword);
+            mySaudeServer.atualizarMac(macPassword); 
             System.out.println("system> Ficheiro mySaude.mac atualizado com sucesso!");
             // --- FIM DA ALÍNEA B ---
 
