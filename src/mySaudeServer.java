@@ -58,7 +58,7 @@ public class mySaudeServer{
 	private static final String USERS_FILE = "../servidor/users.txt";
 	private static final String MAC_FILE = "../servidor/mySaude.mac";
 
-	// 1. Calcula o MAC do ficheiro atual usando a password inserida
+	// 1B. Calcula o MAC do ficheiro atual usando a password inserida
 	public static String calcularMac(String password) throws Exception {
 	    File f = new File(USERS_FILE);
 	    if (!f.exists()) return ""; 
@@ -92,15 +92,6 @@ public class mySaudeServer{
 	    }
 	}
 
-	// 3. Atualiza/Cria o ficheiro mySaude.mac
-	public static void atualizarMac(String password) throws Exception {
-	    String novoMac = calcularMac(password);
-	    if (!novoMac.isEmpty()) {
-	        try (FileWriter writer = new FileWriter(MAC_FILE)) {
-	            writer.write(novoMac);
-	        }
-	    }
-	}
 	
 	public static void main(String[] args) throws IOException {
 		System.out.println("servidor: main");
