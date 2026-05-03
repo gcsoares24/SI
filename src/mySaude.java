@@ -919,7 +919,7 @@ public class mySaude {
 	            File inputFile = new File(trimmedPath);
 
 	            if (!inputFile.exists()) {
-	                System.err.println("ERROR: the file '" + trimmedPath + "' was not found!");
+	                System.err.println("WARNING: the file '" + trimmedPath + "' was not found!");
 	                continue;
 	            }
 
@@ -1019,14 +1019,12 @@ public class mySaude {
 	    String[] paths = filePaths.split(";");
 	    StringBuilder filesToSend = new StringBuilder();
 	 
-	    // 1. Enviar primeiro a sinalização para o servidor (quantos SETS de ficheiros vamos processar para certificados)
 	    client.objOut.writeInt(paths.length);
 	    client.objOut.flush();
 
 	    for (String path : paths) {
 	        String trimmedPath = path.trim();
 	        
-	        // --- Verificação de Certificado ---
 	        try {
 	            KeyStore ksTemp = KeyStore.getInstance("PKCS12");
 	            try (FileInputStream fis = new FileInputStream("../keystore/keystore." + this.username)) {
@@ -1034,7 +1032,7 @@ public class mySaude {
 	            }
 	            
 	            if (ksTemp.getCertificate(targetUser) == null) {
-	                this.receiveCert(ksTemp); // para o sendCert do servidor
+	                this.receiveCert(ksTemp); 
 	            } else {
 	                client.objOut.writeUTF("OK");
 	            }
@@ -1044,13 +1042,23 @@ public class mySaude {
 	            client.objOut.flush();
 	        }
 	        
-	        // 2. Preparação local (Assinar e Cifrar)
+	        // --- ADDED VALIDATION HERE ---
 	        String signedResult = client.signFiles(trimmedPath);
+	        if (signedResult == null || signedResult.isEmpty()) {
+	            System.err.println("Skipping file due to signing error: " + trimmedPath);
+	            continue; // Move to the next file in the loop
+	        }
+
 	        String[] signedParts = signedResult.split(";");
 	        String signatureFile = signedParts[0].trim();
 	        String originalFile = signedParts[1].trim();
 
 	        String encryptedResult = client.encryptFiles(originalFile, targetUser);
+	        if (encryptedResult == null || encryptedResult.isEmpty()) {
+	            System.err.println("Skipping file due to encryption error: " + originalFile);
+	            continue;
+	        }
+
 	        String[] encryptedParts = encryptedResult.split(";");
 	        String encryptedFile = encryptedParts[0].trim();
 	        String keyFile = encryptedParts[1].trim();
@@ -1059,9 +1067,12 @@ public class mySaude {
 	        filesToSend.append(signatureFile).append(";").append(encryptedFile).append(";").append(keyFile);
 	    }
 
-	    // 3. ENVIAR OS FICHEIROS REALMENTE
-	    
-	    client.sendFiles(filesToSend.toString(), targetUser);
+	    // Only send if we actually have files to send
+	    if (filesToSend.length() > 0) {
+	        client.sendFiles(filesToSend.toString(), targetUser);
+	    } else {
+	        System.err.println("No valid files were processed to be sent.");
+	    }
 	}
 	
 	public void receiveDecryptVerify(String filePaths, String signedUser) throws IOException {
