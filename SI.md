@@ -5,7 +5,7 @@ java criarUser user2 utente user22 -f user2.cer
 
 **depois NAO vai ter os certs importados, mas é ok!**
 ### ENVIAR E RECEBER
-java mySaude -s localhost:12345 -u user1 -p user11 -t user2 -e "/mnt/c/Users/guiac/Downloads/FCUL/SI/SI/proj1_enunciado.pdf" "/home/guimbreon/mySaude/eu/exame1.pdf"
+java mySaude -s localhost:12345 -u user1 -p user11 -t user2 -e "/home/guimbreon/mySaude/proj1_enunciado.pdf" "/home/guimbreon/mySaude/eu/exame1.pdf"
 
 Eliminar o proj1_enunciado.pdf do /eu se já existir.
 

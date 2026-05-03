@@ -1,134 +1,103 @@
-README.txt
+# README - Projeto mySaude (Trabalho 2)
 
-COMO EXECUTAR
+## 1. Identificação do Grupo
 
+- **Curso:** Licenciatura em Tecnologias da Informação (LTI) - FCUL
+    
+- **Disciplina:** Segurança Informática, 2025/2026
+    
+- **Grupo:** 7
+    
+- **Elementos:**
+    
+    - Guilherme Soares (62372)
+        
+    - Vitória Correia
+        
+    - Duarte Soares
+        
 
-1. Compilar
+---
 
-(na pasta onde estão os ficheiros .java, o /src)
+## 2. Preparação e Estrutura
 
+> **IMPORTANTE:** Os caminhos (paths) para os ficheiros no sistema local têm de ser completos.
+
+Devem existir as seguintes pastas no ambiente de execução:
+
+- `../servidor/` - Ficheiros armazenados no servidor.
+    
+- `../eu/` - Ficheiros locais do utilizador.
+    
+- `../keystore/` - Localização das chaves (ex: `keystore.user1`).
+    
+
+---
+
+## 3. Como Executar
+
+## 0. Passwords e Configs
+- Por simplificacao, todas as palavras passes(ex: keystore.server, keystore.users,  .mac), foram setadas como 123456.
+- O projeto tem de ser executado apartir da /src, e com o projeto no /home.
+### 1. Compilação
+
+Bash
+
+```
 javac *.java
+```
 
+### 2. Iniciar o Servidor
 
-2. Iniciar o servidor
+O servidor utiliza o porto 12345 e solicita passwords para o MAC 
 
-java mySaudeServer <porto>
+Bash
 
-Exemplo:
+```
 java mySaudeServer 12345
+```
 
+### 3. Criar Utilizadores
 
-depois aparecerá para inserir duas password, que são: 123456
+Registo de utilizadores e importação de certificados para a `keystore.users` do servidor.
 
-3. Executar o cliente
+Bash
 
-Formato geral:
-java mySaude -s <ip>:<porto> -u <username> [opções]
-
-Exemplo:
-java mySaude -s 127.0.0.1:12345 -u user1 ...
-
-pedirá uma password: 123456
-
-
-4. Estrutura necessária
-
-Devem existir as pastas:
-
-../servidor/
-../eu/
-../keystore/
-
-No src, para criar os users:
-
+```
 java criarUser user1 medico user11 -f user1.cer
 java criarUser user2 utente user22 -f user2.cer
+```
 
+---
 
-5. Preparação das keystores e utilizadores (OBRIGATÓRIO)
+## 4. Exemplos de Comandos (Casos de Teste)
 
-Já existem keystores criadas para os seguintes utilizadores:
+### Enviar e Receber (Simples)
 
-- user1 (password: passUser1)
-- user2 (password: passUser2)
+- **Enviar:** `java mySaude -s localhost:12345 -u user1 -p user11 -t user2 -e "/home/guimbreon/mySaude/proj1_enunciado.pdf" "/home/guimbreon/mySaude/eu/exame1.pdf"`
+    
+- **Receber:** `java mySaude -s localhost:12345 -u user2 -p user22 -r proj1_enunciado.pdf exame1.pdf`
+    
 
-As keystores encontram-se em:
-../keystore/keystore.user1
-../keystore/keystore.user2
+### Cifrar e Decifrar (Local/Servidor)
 
+- **Cifrar e Enviar:** `java mySaude -s localhost:12345 -u user1 -p user11 -t user2 -ce "/home/guimbreon/mySaude/eu/exame1.pdf" "/home/guimbreon/mySaude/eu/proj1_enunciado.pdf"`
+    
+- **Receber e Decifrar:** `java mySaude -s localhost:12345 -u user2 -p user22 -rd exame1.pdf.cifrado exame1.pdf.chave.user2 proj1_enunciado.pdf.cifrado proj1_enunciado.pdf.chave.user2`
+    
 
-Caso se pretenda criar novos utilizadores:
+### Assinar e Validar
 
-Criar keystore:
-bash ./create_keystore.sh <username> <password>
+- **Assinar e Enviar:** `java mySaude -s localhost:12345 -u user1 -p user11 -t user2 -ae "/home/guimbreon/mySaude/eu/exame1.pdf" "/home/guimbreon/mySaude/eu/proj1_enunciado.pdf"`
+    
+- **Receber e Validar:** `java mySaude -s localhost:12345 -u user2 -p user22 -t user1 -rv exame1.pdf.assinado exame1.pdf.assinatura.user1 proj1_enunciado.pdf.assinado proj1_enunciado.pdf.assinatura.user1`
+    
 
-Importar certificados:
-bash importar_certs.sh <user_from> <user_to> <password_to>
+### Operação Completa (Assinar + Cifrar + Enviar)
 
+- **Enviar:** `java mySaude -s localhost:12345 -u user1 -p user11 -t user2 -ace "/home/guimbreon/mySaude/eu/exame1.pdf" "/home/guimbreon/mySaude/eu/proj1_enunciado.pdf"`
+    
+- **Receber:** `java mySaude -s localhost:12345 -u user2 -p user22 -t user1 -rdv exame1.pdf proj1_enunciado.pdf`
+    
 
-6. Comandos principais
-
-Legenda:
-- <path_ficheiro> → caminho local (relativo ou absoluto)
-- <nome_ficheiro> → apenas nome (ficheiro no servidor)
-- o combo  -u <user>-p <password>, tem de pertencer a um dos users criados com o criarUser
-
-Enviar ficheiros:
-java mySaude -s <ip>:<porto> -u <user>-p <password> -e <path_ficheiros> -t <destinatario>
-
-Receber ficheiros:
-java mySaude -s <ip>:<porto> -u <user>-p <password> -r <nome_ficheiros>
-
-Cifrar:
-java mySaude -u <user> -p <password> -c <path_ficheiros> -t <destinatario>
-
-Decifrar:
-java mySaude -u <user> -p <password> -d <path_ficheiros.cifrado>
-
-Cifrar e enviar:
-java mySaude -s <ip>:<porto> -u <user> -p <password> -ce <path_ficheiros> -t <destinatario>
-
-Receber e decifrar:
-java mySaude -s <ip>:<porto> -u <user> -p <password> -rd <nome_ficheiros>
-
-Assinar:
-java mySaude -u <user> -p <password> -a <path_ficheiros>
-
-Verificar assinatura:
-java mySaude -u <user> -p <password> -v <path_ficheiros> -t <assinante>
-
-Assinar e enviar:
-java mySaude -s <ip>:<porto> -u <user> -p <password> -ae <path_ficheiros> -t <destinatario>
-
-Receber e verificar:
-java mySaude -s <ip>:<porto> -u <user> -p <password> -rv <nome_ficheiros> -t <assinante>
-
-Assinar + cifrar + enviar:
-java mySaude -s <ip>:<porto> -u <user> -p <password> -ace <path_ficheiros> -t <destinatario>
-
-Nota: neste comando indica-se apenas o nome do ficheiro original. 
-O programa constrói automaticamente os nomes dos ficheiros associados (.envelope, .chave.<username> e .assinatura.<assinante>),
-
-Receber + decifrar + verificar:
-java mySaude -s <ip>:<porto> -u <user> -p <password> -rdv <nome_ficheiros> -t <assinante>
-
-Nota: neste comando indica-se apenas o nome do ficheiro original. O programa vai buscar automaticamente os ficheiros associados no servidor (.envelope, .chave e .assinatura).
-
-
-7. Ficheiros de teste
-
-Na pasta ../eu/ já existem os seguintes ficheiros para teste:
-
-- teste.txt
-- exame1.pdf
-- exame2.pdf
-- exame3.pdf
-
-
-8. Notas finais
-
-- O servidor deve estar ativo antes do cliente
-- <path_ficheiro> deve existir no sistema local
-- <nome_ficheiro> refere-se a ficheiros no servidor
-- Ficheiros recebidos são guardados em ../eu/
-- As pastas dos utilizadores devem existir no servidor
+---
