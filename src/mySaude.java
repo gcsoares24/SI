@@ -182,7 +182,7 @@ public class mySaude {
 	    }
 	}
 	
-    private static void switchCase(String option, String value) throws EOFException, ConnectException {
+    private static void switchCase(String option, String value) throws IOException {
     	String filesToSend;
     	switch (option) {
 	        // 2A. Transferência de Ficheiros
@@ -227,6 +227,7 @@ public class mySaude {
 	                System.out.println("No files to send.");
 	                break;
 	            }
+	            client.objOut.writeUTF(OK);
 
 	            client.sendFiles(filesToSend, client.receiver);
 	            break;
@@ -291,7 +292,7 @@ public class mySaude {
 	    return flags;
 	}
 	
-    public static String inicialize(Map<String, String> flags) throws ConnectException {
+    public static String inicialize(Map<String, String> flags) throws ConnectException, NoSuchAlgorithmException, CertificateException, ClassNotFoundException, KeyStoreException {
         String option = null;
 
         // 1. Primeiro descobrir a opção
@@ -318,7 +319,7 @@ public class mySaude {
         if (flags.containsKey("-t")) {
             client.receiver = flags.get("-t");
         }
-
+     
         // 3. Só configurar TLS e ligar se a opção precisar de servidor
         if (NEEDS_SERVER.contains(option)) {
             if (!flags.containsKey("-s")) {
@@ -627,7 +628,7 @@ public class mySaude {
 	        return null;
 	    }
 	}
-	public Certificate receiveCert(KeyStore ks) throws NoSuchAlgorithmException, CertificateException, ClassNotFoundException {
+	public Certificate receiveCert(KeyStore ks) throws NoSuchAlgorithmException, CertificateException, ClassNotFoundException, IOException {
 		
 	    if (client.sock == null || client.objOut == null || client.objIn == null) {
 	        System.out.println("Socket is not connected. Let's startClient first...");
@@ -637,12 +638,17 @@ public class mySaude {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-	    
+	        login("GET_CERT");
+	    }else {
+	    	 // Enviar Opção
+            client.objOut.writeUTF("GET_CERT");
+            client.objOut.flush();
+
 	    }
 	    
 		try {
 			
-			login("GET_CERT");
+			
 
             client.objOut.writeUTF(client.receiver);
             client.objOut.flush();
@@ -735,6 +741,10 @@ public class mySaude {
 	            System.out.println("FIXING...: Getting cert from server......");
 	            cert = receiveCert(ks);
 	            
+	        }else {
+	            client.objOut.writeObject(OK);
+	            client.objOut.flush();
+	        	
 	        }
 	        PublicKey publicKey = cert.getPublicKey();
 

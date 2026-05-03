@@ -304,6 +304,21 @@ public class mySaudeServer{
 		            case "-c":
 		            case "-v":
 		            case "-ce":
+		            	System.out.println("A");
+			            String hasCert = (String) inStream.readUTF();
+		            	System.out.println("A");
+			            if(hasCert.equals("GET_CERT")) {
+			            	sendCert(inStream, outStream);
+			            }
+		            	System.out.println("A");
+			            String criptDone = (String) inStream.readUTF();
+		            	System.out.println("A");
+			            if(criptDone.equals(OK)) {
+			                receiveFiles(inStream, outStream, "../servidor/");
+			            }
+		            	System.out.println("A");
+			            break;
+		            	
 		            case "-ae":
 		            case "-ace":
 		                receiveFiles(inStream, outStream, "../servidor/");
