@@ -154,7 +154,7 @@ public class mySaude {
             switchCase(option, flags.get(option));
             
 	    }catch(SocketException e){
-        	System.out.println("\n\n LOGIN ERROR... SHUTTING DOWN...");
+        	System.out.println("\n\n SHUTTING DOWN...");
         	return;
      }catch(Exception e){
 	        	System.out.println("\n\nIt seems like your option has an ERROR:\n\n" + e.getMessage());
@@ -199,7 +199,6 @@ public class mySaude {
 	            if(client.receiver == null) {
 	            	throw new EOFException("There is no -t (receiver).");
 	            }
-            	System.out.println("OKtoSEND");
 	            client.objOut.writeUTF(OK);
 	            client.sendFiles(value, client.receiver);
 	            break;
@@ -234,15 +233,12 @@ public class mySaude {
 
 	            filesToSend = client.encryptFiles(value, client.receiver);
 
-            	System.out.println("Encrypted");
 	            if (filesToSend.isEmpty()) {
 	                System.out.println("No files to send.");
 	                break;
 	            }
-            	System.out.println("OKtoSEND");
 	            client.objOut.writeUTF(OK);
 
-            	System.out.println("OKtoSEND");
 	            client.sendFiles(filesToSend, client.receiver);
 	            break;
 
@@ -255,7 +251,6 @@ public class mySaude {
 	        case "-ae":
 	        	filesToSend = client.signFiles(value);
 	        	if (filesToSend.isEmpty()) {
-	                System.out.println("No files to send.");
 	                break;
 	            }
 	            client.objOut.writeUTF(OK);
@@ -407,7 +402,6 @@ public class mySaude {
 	    System.setProperty("javax.net.ssl.trustStorePassword", trustStorePassword);
 	    System.setProperty("javax.net.ssl.trustStoreType", "PKCS12");
 
-	    System.out.println("TLS> truststore used: " + trustStoreFile.getAbsolutePath());
 	}
 	
 	private static String readPassword(String prompt) {
@@ -781,7 +775,6 @@ public class mySaude {
 	        try (FileInputStream fis = new FileInputStream("../keystore/keystore." + this.username)) {
 	            ks.load(fis, this.password.toCharArray());
 	        }
-	        System.out.println("okok");
 
 	        Certificate cert = ks.getCertificate(targetUser);
 	        if (cert == null) {
@@ -848,16 +841,14 @@ public class mySaude {
 	public void decryptFiles(String filePaths) {
 	    String[] paths = filePaths.split(";");
 	    try {
-            System.out.println("A");
 	        KeyStore ks = KeyStore.getInstance("PKCS12");
 	        try (FileInputStream fis = new FileInputStream("../keystore/keystore." + this.username)) {
 	            ks.load(fis, this.password.toCharArray());
 	        }
 
-            System.out.println("A");
             System.out.println(this.password);
 	        PrivateKey privateKey = (PrivateKey) ks.getKey(this.username, this.password.toCharArray());
-            System.out.println("A");
+            
 
 	        for (String path : paths) {
 	            String baseName = path.replace(".cifrado", "");
@@ -873,18 +864,15 @@ public class mySaude {
 	            try (FileInputStream fis = new FileInputStream(keyFile)) {
 	                fis.read(wrappedKey);
 	            }
-	            System.out.println("B");
 	            
 
 	            Cipher rsaCipher = Cipher.getInstance("RSA");
 	            rsaCipher.init(Cipher.UNWRAP_MODE, privateKey);
 	            SecretKey aesKey = (SecretKey) rsaCipher.unwrap(wrappedKey, "AES", Cipher.SECRET_KEY);
 
-	            System.out.println("C");
 	            Cipher aesCipher = Cipher.getInstance("AES");
 	            aesCipher.init(Cipher.DECRYPT_MODE, aesKey);
 
-	            System.out.println("D");
 	            try (FileInputStream fis = new FileInputStream(path);
 	                FileOutputStream fos = new FileOutputStream(baseName)){
 	                byte[] buffer = new byte[8192];
@@ -977,11 +965,9 @@ public class mySaude {
 			PublicKey publicKey = cert.getPublicKey();
 
 			for (String path : paths) {
-				System.out.println(path);
 				File inputFile = new File(path.trim());
 				File sigFile = new File(path.trim().replace(".assinado", "") + ".assinatura." + targetUser);
-				System.out.println(inputFile);
-				System.out.println(sigFile);
+				
 				if (!inputFile.exists() || !sigFile.exists()) {
 					System.err.println("ERROR: The File or the Signature was not found (" + path.trim() + ")");
 					continue;

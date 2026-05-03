@@ -90,7 +90,7 @@ public class mySaudeServer{
 	        if (usersFile.exists() && !macFile.exists()) return false; 
 	        
 	        String macGuardado = new String(Files.readAllBytes(macFile.toPath())).trim();
-	        System.out.println(macGuardado);
+	        
 	        String macCalculado = calcularMac(password);
 	        
 	        return macGuardado.equals(macCalculado);
@@ -243,7 +243,6 @@ public class mySaudeServer{
 		    sSoc = (SSLServerSocket) ssf.createServerSocket(port);
 		    
 		    
-		    System.out.println("servidor> TLS is active.Listening at the port: " + port + "...");
 		} catch (IOException e) {
 			System.err.println(e.getMessage());
 			System.exit(-1);
@@ -341,7 +340,7 @@ public class mySaudeServer{
 	            // Se tudo estiver OK
 	            objOut.writeObject("OK");
 	            objOut.flush();
-	            System.out.println("User entered with success");
+	            System.out.println("User has logged with success");
 	            return true;
 
 	        } catch (Exception e) {
@@ -356,7 +355,6 @@ public class mySaudeServer{
 	            ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream());
 	           	            
 
-	            System.out.println("want the option");
 	            String option = (String) inStream.readObject();
 	            System.out.println("The option for this conn is:" + option);
 	            if (!autenticarUtilizador(inStream, outStream, option)) {
@@ -392,14 +390,11 @@ public class mySaudeServer{
 		            case "-ace":
 		                // Lê o OK enviado pelo cliente (linha 255 do mySaude.java)
 		                mainDone = (String) inStream.readUTF(); 
-	                	System.out.println("asd");
 		                // 1. Ler quantos ficheiros para tratar certificados
 		                int qnt = inStream.readInt(); 
 		                if (qnt <= 0) break;
-	                	System.out.println("asd");
 
 		                for (int i = 0; i < qnt; i++) {
-		                	System.out.println("asd");
 		                    certStatus = inStream.readUTF();
 		                    if (certStatus.equals("GET_CERT")) {
 		                        sendCert(inStream, outStream);
@@ -417,16 +412,12 @@ public class mySaudeServer{
 		            case "-rv":
 		                sendFiles(inStream, outStream, "../servidor/");
 		                mainDone = (String) inStream.readUTF();
-		            	System.out.println("A");
 			            if(mainDone.equals(OK)) {
-			            	System.out.println("A");
 				            hasCert = (String) inStream.readUTF();
-			            	System.out.println("A");
 			            	if(hasCert.equals("GET_CERT")) {
 				            	sendCert(inStream, outStream);
 				            }
 			            }
-		            	System.out.println("A");
 			            
 			            
 			            break;
@@ -538,8 +529,6 @@ public class mySaudeServer{
 			    objOut.flush();
 	    		
 	    		
-	    		System.out.println("CERT OF THE USER" + username);
-                System.out.println(cert);
                
                 
                 
@@ -698,9 +687,8 @@ public class mySaudeServer{
 	                
 	                if(previousWasSignature) {
 	                	if(fileName.contains(".cifrado")) {
-	                		System.out.println(destPath);
 	                		destPath = destPath.replace(".cifrado", ".envelope");
-	                		System.out.println(destPath);
+	                	
 	                	}else if(!fileName.contains(".chave")){
 		                	destPath += ".assinado";
 	                	}

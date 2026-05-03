@@ -204,7 +204,6 @@ public class criarUser {
 
 			    java.security.KeyStore ks = java.security.KeyStore.getInstance("PKCS12");
 			    String ksPath = userFile; 
-			    System.out.println(flags);
 
 			    File ksFile = new File(ksPath);
 			    if (ksFile.exists()) {
