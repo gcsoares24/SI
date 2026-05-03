@@ -276,6 +276,7 @@ public class mySaudeServer{
 	            // Se tudo estiver OK
 	            objOut.writeObject("OK");
 	            objOut.flush();
+	            System.out.println("User entered with success");
 	            return true;
 
 	        } catch (Exception e) {
@@ -298,6 +299,8 @@ public class mySaudeServer{
 	            switch (option) {
 
 		            case "-e":
+		            case "-c":
+		            case "-v":
 		            case "-ce":
 		            case "-ae":
 		            case "-ace":
@@ -358,7 +361,7 @@ public class mySaudeServer{
 	    		}else{
 			        try (FileInputStream ksfis = new FileInputStream(ksFile)) {
 					    
-					    char[] ksPassword = "password".toCharArray(); // Define uma pass para a KS
+					    char[] ksPassword = "123456".toCharArray(); // Define uma pass para a KS
 			            ks.load(ksfis, ksPassword);
 					    
 			        } catch (NoSuchAlgorithmException e) {

@@ -73,7 +73,7 @@ public class mySaude {
 	);
 
 	private static final Set<String> NEEDS_SERVER = Set.of(
-	    "-e", "-r","-c" , "-d",  "-ce", "-rd", "-ae", "-rv", "-ace", "-rdv"
+	    "-e", "-r",  "-ce", "-rd", "-ae", "-rv", "-ace", "-rdv", "GET_CERT"
 	);
 
 	private static String isOption(String currentFlag, String fallback) {
@@ -91,10 +91,34 @@ public class mySaude {
     public String username;
     public String password;
     public String receiver;
+	private String[] address;
 	
 	
 	public static mySaude client = new mySaude();
-		
+	
+	private static void login(String option) throws IOException, ClassNotFoundException {
+		if (NEEDS_SERVER.contains(option) ) {
+            if (client.objOut == null) {
+                throw new IllegalArgumentException("The option " + option + " requires connection to the server (-s).");
+            }
+            
+            // Enviar Opção
+            client.objOut.writeObject(option);
+            client.objOut.flush();
+
+            // NOVO: Enviar login para o servidor
+            client.objOut.writeUTF(client.username);
+            client.objOut.writeObject(client.password);
+            client.objOut.flush();
+
+            // NOVO: Validar resposta do login
+            String res = (String) client.objIn.readObject();
+            if (!res.equals("OK")) {
+                System.out.println("Acesso Negado pelo Servidor: " + res);
+                return; // Aborta a operação se não houver permissão ou login falhar
+            }
+        }
+	}
 	public static void main(String[] args) throws IllegalArgumentException{
 
 		try {
@@ -112,27 +136,7 @@ public class mySaude {
             validateRequiredFlags(option);
             
             //sends only server type of operation
-            if (SERVER_OPTIONS.contains(option)) {
-                if (client.objOut == null) {
-                    throw new IllegalArgumentException("The option " + option + " requires connection to the server (-s).");
-                }
-                
-                // Enviar Opção
-                client.objOut.writeObject(option);
-                client.objOut.flush();
-
-                // NOVO: Enviar login para o servidor
-                client.objOut.writeUTF(client.username);
-                client.objOut.writeObject(client.password);
-                client.objOut.flush();
-
-                // NOVO: Validar resposta do login
-                String res = (String) client.objIn.readObject();
-                if (!res.equals("OK")) {
-                    System.out.println("Acesso Negado pelo Servidor: " + res);
-                    return; // Aborta a operação se não houver permissão ou login falhar
-                }
-            }
+            login(option);
             
             switchCase(option, flags.get(option));
 	 
@@ -314,8 +318,9 @@ public class mySaude {
                 throw new IllegalArgumentException("A opção " + option + " requer -s endereço:porto.");
             }
 
-            configureClientTLS();
             client.startClient(flags.get("-s").split(":"));
+        }else {
+        	client.address = flags.get("-s").split(":");
         }
 
         return option;
@@ -364,7 +369,11 @@ public class mySaude {
 	}
 
 	public void startClient(String[] address) throws ConnectException {
-	    System.out.println("-s: Defining servers Ip and port.");
+
+		System.out.println("-s: Difining TLS...");
+        configureClientTLS();
+		
+		System.out.println("-s: Defining servers Ip and port.");
 
 	    int port;
 	    String ip;
@@ -610,20 +619,23 @@ public class mySaude {
 	        return null;
 	    }
 	}
-	public Certificate receiveCert(KeyStore ks) throws NoSuchAlgorithmException, CertificateException {
+	public Certificate receiveCert(KeyStore ks) throws NoSuchAlgorithmException, CertificateException, ClassNotFoundException {
+		
 	    if (client.sock == null || client.objOut == null || client.objIn == null) {
-	        System.out.println("Socket is not connected. Call startClient first.");
-	        
+	        System.out.println("Socket is not connected. Let's startClient first...");
+	        try {
+				startClient(client.address);
+			} catch (ConnectException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 	    }
 	    
 		try {
-		    // send tag and targetUser
-		    client.objOut.writeObject("GET_CERT");
-		    client.objOut.flush();
-		    
-		    client.objOut.writeUTF(client.receiver);
-		    client.objOut.flush();
-		    
+			login("GET_CERT");
+
+            client.objOut.writeUTF(client.receiver);
+            client.objOut.flush();
 		    
 		    // get file
 		    String status = (String) client.objIn.readUTF();
@@ -754,7 +766,7 @@ public class mySaude {
 
 	            System.out.println("Ciphered file: " + encryptedPath);
 
-	            // 🔥 adicionar ao resultado
+	            //  adicionar ao resultado
 	            if (!result.isEmpty()) {
 	                result += ";";
 	            }
@@ -771,17 +783,22 @@ public class mySaude {
 	public void decryptFiles(String filePaths) {
 	    String[] paths = filePaths.split(";");
 	    try {
+            System.out.println("A");
 	        KeyStore ks = KeyStore.getInstance("PKCS12");
 	        try (FileInputStream fis = new FileInputStream("../keystore/keystore." + this.username)) {
 	            ks.load(fis, this.password.toCharArray());
 	        }
 
+            System.out.println("A");
+            System.out.println(this.password);
 	        PrivateKey privateKey = (PrivateKey) ks.getKey(this.username, this.password.toCharArray());
+            System.out.println("A");
 
 	        for (String path : paths) {
 	            String baseName = path.replace(".cifrado", "");
 	            baseName = baseName.replace(".envelope", "");
 	            File keyFile = new File(baseName + ".chave." + this.username);
+	            System.out.println(baseName + ".chave." + this.username);
 	            if (!keyFile.exists()) {
 	                System.err.println("ERROR: The key-file not found for: " + path);
 	                continue;
@@ -791,14 +808,18 @@ public class mySaude {
 	            try (FileInputStream fis = new FileInputStream(keyFile)) {
 	                fis.read(wrappedKey);
 	            }
+	            System.out.println("B");
+	            
 
 	            Cipher rsaCipher = Cipher.getInstance("RSA");
 	            rsaCipher.init(Cipher.UNWRAP_MODE, privateKey);
 	            SecretKey aesKey = (SecretKey) rsaCipher.unwrap(wrappedKey, "AES", Cipher.SECRET_KEY);
 
+	            System.out.println("C");
 	            Cipher aesCipher = Cipher.getInstance("AES");
 	            aesCipher.init(Cipher.DECRYPT_MODE, aesKey);
 
+	            System.out.println("D");
 	            try (FileInputStream fis = new FileInputStream(path);
 	                FileOutputStream fos = new FileOutputStream(baseName)){
 	                byte[] buffer = new byte[8192];

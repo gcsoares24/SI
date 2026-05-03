@@ -147,7 +147,7 @@ public class criarUser {
 
 			    // 2. Lógica da KeyStore
 			    java.security.KeyStore ks = java.security.KeyStore.getInstance("PKCS12");
-			    char[] ksPassword = "password".toCharArray(); // Define uma pass para a KS
+			    char[] ksPassword = "123456".toCharArray(); // Define uma pass para a KS
 			    String ksPath = userFile; 
 			    System.out.println(flags);
 
