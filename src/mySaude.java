@@ -199,6 +199,8 @@ public class mySaude {
 	            if(client.receiver == null) {
 	            	throw new EOFException("There is no -t (receiver).");
 	            }
+            	System.out.println("OKtoSEND");
+	            client.objOut.writeUTF(OK);
 	            client.sendFiles(value, client.receiver);
 	            break;
 	        case "-r":
@@ -269,6 +271,9 @@ public class mySaude {
 	            
 	            break;
 	        case "-ace":
+	        	// 1. Sinalização inicial para o servidor sair do login
+	    	    client.objOut.writeUTF(OK); 
+	    	    client.objOut.flush();
 	        	client.signEncryptSend(value, client.receiver);
 	            break;
 	        case "-rdv":
@@ -1013,86 +1018,49 @@ public class mySaude {
 	public void signEncryptSend(String filePaths, String targetUser) throws IOException {
 	    String[] paths = filePaths.split(";");
 	    StringBuilder filesToSend = new StringBuilder();
-
-        // 0) quantos existem
-	    
-	    // Validar primeiro se os ficheiros existem antes de falar com o servidor
-	    for (String p : paths) {
-	        if (!new File(p.trim()).exists()) {
-	             System.out.println("Ficheiro não encontrado: " + p);
-	             client.objOut.writeInt(-1); // Envia -1 para sinalizar erro ao servidor
-	             client.objOut.flush();
-	             return;
-	        }
-	    }
-
+	 
+	    // 1. Enviar primeiro a sinalização para o servidor (quantos SETS de ficheiros vamos processar para certificados)
 	    client.objOut.writeInt(paths.length);
 	    client.objOut.flush();
-        System.out.println(paths +  "FILES TO SEND");
+
 	    for (String path : paths) {
-	    	String trimmedPath = path.trim();
+	        String trimmedPath = path.trim();
 	        
-	        // --- verficiar se existe cert ou nao ---
+	        // --- Verificação de Certificado ---
 	        try {
 	            KeyStore ksTemp = KeyStore.getInstance("PKCS12");
 	            try (FileInputStream fis = new FileInputStream("../keystore/keystore." + this.username)) {
 	                ksTemp.load(fis, this.password.toCharArray());
 	            }
 	            
-	            // Se não temos o certificado, pedimos ao servidor
 	            if (ksTemp.getCertificate(targetUser) == null) {
-	                client.objOut.writeUTF("GET_CERT");
+	                this.receiveCert(ksTemp); // para o sendCert do servidor
 	            } else {
-	                client.objOut.writeUTF(OK);
+	                client.objOut.writeUTF("OK");
 	            }
 	            client.objOut.flush();
 	        } catch (Exception e) {
-	            client.objOut.writeUTF(OK); // Fallback para não quebrar o servidor
+	            client.objOut.writeUTF("OK");
 	            client.objOut.flush();
 	        }
 	        
-	        // 1) assinar
+	        // 2. Preparação local (Assinar e Cifrar)
 	        String signedResult = client.signFiles(trimmedPath);
-	        if (signedResult == null || signedResult.isEmpty()) {
-	            continue;
-	        }
-
-	        // signFiles devolve: assinatura;ficheiroOriginal
 	        String[] signedParts = signedResult.split(";");
 	        String signatureFile = signedParts[0].trim();
 	        String originalFile = signedParts[1].trim();
 
-	        // 2) cifrar apenas o ficheiro original
 	        String encryptedResult = client.encryptFiles(originalFile, targetUser);
-	        if (encryptedResult == null || encryptedResult.isEmpty()) {
-	            continue;
-	        }
-
-	        // encryptFiles devolve: envelope;chave
 	        String[] encryptedParts = encryptedResult.split(";");
 	        String encryptedFile = encryptedParts[0].trim();
 	        String keyFile = encryptedParts[1].trim();
 
-	        // 3) montar ordem: assinatura ; pdfCifrado ; chave
-	        if (filesToSend.length() > 0) {
-	            filesToSend.append(";");
-	        }
-
-	        filesToSend.append(signatureFile)
-	                   .append(";")
-	                   .append(encryptedFile)
-	                   .append(";")
-	                   .append(keyFile);
+	        if (filesToSend.length() > 0) filesToSend.append(";");
+	        filesToSend.append(signatureFile).append(";").append(encryptedFile).append(";").append(keyFile);
 	    }
 
-	    if (filesToSend.length() == 0) {
-	        System.out.println("No file to send.");
-	        client.objOut.writeUTF("NO");
-	        return;
-	    }
-        System.out.println("Sending.");
-
-        client.objOut.writeUTF(OK);
+	    // 3. ENVIAR OS FICHEIROS REALMENTE
+	    
 	    client.sendFiles(filesToSend.toString(), targetUser);
 	}
 	

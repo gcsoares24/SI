@@ -364,6 +364,7 @@ public class mySaudeServer{
 	                return; 
 	            }
 	            String hasCert;
+	            String certStatus;
 	            String mainDone;
 	            switch (option) {
 
@@ -389,28 +390,25 @@ public class mySaudeServer{
 		                }
 		                break;
 		            case "-ace":
-		                // 1) Ler a quantidade de conjuntos de ficheiros
+		                // Lê o OK enviado pelo cliente (linha 255 do mySaude.java)
+		                mainDone = (String) inStream.readUTF(); 
+	                	System.out.println("asd");
+		                // 1. Ler quantos ficheiros para tratar certificados
 		                int qnt = inStream.readInt(); 
-		                if (qnt <= 0) {
-		                    System.out.println("Cliente sinalizou erro ou zero ficheiros.");
-		                    break;
-		                }
-		                System.out.println("Processing " + qnt + " file sets.");
+		                if (qnt <= 0) break;
+	                	System.out.println("asd");
 
-		                // 2) Processar pedidos de certificados para cada ficheiro
 		                for (int i = 0; i < qnt; i++) {
-		                    String certStatus = inStream.readUTF(); // "OK" ou "GET_CERT"
+		                	System.out.println("asd");
+		                    certStatus = inStream.readUTF();
 		                    if (certStatus.equals("GET_CERT")) {
 		                        sendCert(inStream, outStream);
 		                    }
 		                }
 
-		                // 3) Ler confirmação final antes do envio real
-		                mainDone = inStream.readUTF();
-		                if (mainDone.equals(OK)) {
-		                    // O receiveFiles já trata internamente o resto
-		                    receiveFiles(inStream, outStream, "../servidor/");
-		                }
+		                // 2. Chamar DIRETAMENTE o receiveFiles. 
+		                // O cliente vai iniciar o sendFiles() que envia o numFiles (int) e receiver (UTF).
+		                receiveFiles(inStream, outStream, "../servidor/");
 		                break;
 		            case "-r":
 		            case "-rd":
