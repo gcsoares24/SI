@@ -81,13 +81,22 @@ public class mySaudeServer{
 	        File macFile = new File(MAC_FILE);
 	        File usersFile = new File(USERS_FILE);
 	        
+	        if (!macFile.exists()){
+	        	throw new IllegalArgumentException("mySaude.mac doesnt exist.");
+	        	
+	        }
+	        
 	        if (!usersFile.exists() && !macFile.exists()) return true; 
 	        if (usersFile.exists() && !macFile.exists()) return false; 
 	        
 	        String macGuardado = new String(Files.readAllBytes(macFile.toPath())).trim();
+	        System.out.println(macGuardado);
 	        String macCalculado = calcularMac(password);
 	        
 	        return macGuardado.equals(macCalculado);
+	    }catch (IllegalArgumentException e) {
+	        // Relança o erro personalizado para que o main() o veja
+	        throw e; 
 	    } catch (Exception e) {
 	        return false;
 	    }
@@ -124,7 +133,7 @@ public class mySaudeServer{
 		if (new File(USERS_FILE).exists()) {
 			// ATUALIZADO AQUI para verificarMac
 			if (!verificarMac(macPassword)) {
-				System.err.println("FATAL ERROR: Invalid MAC. The password file has been tampered with!");
+				System.err.println("FATAL ERROR: Invalid MAC. Either the password is wrong or the file has been tampered with!");
 				System.exit(-1); 
 			}
 			System.out.println("server> File integrity validated successfully.");
@@ -281,13 +290,14 @@ public class mySaudeServer{
 
 	            boolean authenticated = false;
 	            String role = "";
-
+	            boolean notFound = true;
 	            // 3. Procurar utilizador e validar password
 	            try (BufferedReader reader = new BufferedReader(new FileReader(USERS_FILE))) {
 	                String line;
 	                while ((line = reader.readLine()) != null) {
 	                    String[] parts = line.split(":");
 	                    if (parts[0].equals(user)) {
+	                    	notFound = false;
 	                        // Formato esperado: username:role:salt:hash
 	                        byte[] salt = Base64.getDecoder().decode(parts[2]);
 	                        String storedHash = parts[3];
@@ -308,6 +318,11 @@ public class mySaudeServer{
 	            }
 
 	            // 4. Validações finais
+	            if (notFound) {
+	                objOut.writeObject("NOT_FOUND");
+	                objOut.flush();
+	                return false;
+	            }
 	            if (!authenticated) {
 	                objOut.writeObject("ERRO_LOGIN");
 	                objOut.flush();

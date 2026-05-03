@@ -118,6 +118,10 @@ public class mySaude {
             // NOVO: Validar resposta do login
             String res = (String) client.objIn.readObject();
             if (!res.equals("OK")) {
+                if(res.equals("NOT_FOUND")) {
+                    System.out.println("User doesnt exist: " + res);
+                	return false;
+                }
                 System.out.println("Acesso Negado pelo Servidor: " + res);
                 return false; // Aborta a operação se não houver permissão ou login falhar
             }

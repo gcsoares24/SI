@@ -276,6 +276,7 @@ public class criarUser {
 	    String function = args[1];
 	    if(!FUNCTIONS.contains(function)) {
             System.err.println("erro> The function should be: 'medico' or 'utente'.");
+            System.exit(-1); 
 	    }
 	    String password = args[2];
 
