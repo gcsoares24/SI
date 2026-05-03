@@ -352,47 +352,48 @@ public class mySaudeServer{
 	            String mainDone;
 	            switch (option) {
 
-	            	case "-ce":
-		            	System.out.println("A");
-			            hasCert = (String) inStream.readUTF();
-		            	System.out.println("A");
-			            if(hasCert.equals("GET_CERT")) {
-			            	sendCert(inStream, outStream);
-			            }
-		            	System.out.println("A");
-			            String criptDone = (String) inStream.readUTF();
-		            	System.out.println("A");
-			            if(criptDone.equals(OK)) {
-			                receiveFiles(inStream, outStream, "../servidor/");
-			            }
-		            	System.out.println("A");
-			            break;
+		            case "-ce":
+		                hasCert = (String) inStream.readUTF(); 
+		                
+		                if(hasCert.equals("GET_CERT")) {
+		                    sendCert(inStream, outStream);
+		                    String criptDone = (String) inStream.readUTF(); 
+		                } else if (hasCert.equals(OK)) {
+		                }
+	
+		                receiveFiles(inStream, outStream, "../servidor/");
+		                break;
 		            case "-e":
 		            case "-v":
 		            	
 		            case "-ae":
-		                receiveFiles(inStream, outStream, "../servidor/");
+		                // Lê o OK enviado pelo cliente (linha 255 do mySaude.java)
+		                mainDone = (String) inStream.readUTF(); 
+		                if (mainDone.equals(OK)) {
+		                    receiveFiles(inStream, outStream, "../servidor/");
+		                }
 		                break;
 		            case "-ace":
-		                // 0) Read how many files are being processed (to know how many certs to check)
+		                // 1) Ler a quantidade de conjuntos de ficheiros
 		                int qnt = inStream.readInt(); 
+		                if (qnt <= 0) {
+		                    System.out.println("Cliente sinalizou erro ou zero ficheiros.");
+		                    break;
+		                }
 		                System.out.println("Processing " + qnt + " file sets.");
 
-		                if(qnt > 0) {
-		                    // FIX: condition must be i < qnt
-		                    for(int i = 0; i < qnt; i++) {
-		                        String certStatus = inStream.readUTF(); // Reads "OK" or "GET_CERT"
-		                        if(certStatus.equals("GET_CERT")) {
-		                            sendCert(inStream, outStream);
-		                        }
+		                // 2) Processar pedidos de certificados para cada ficheiro
+		                for (int i = 0; i < qnt; i++) {
+		                    String certStatus = inStream.readUTF(); // "OK" ou "GET_CERT"
+		                    if (certStatus.equals("GET_CERT")) {
+		                        sendCert(inStream, outStream);
 		                    }
 		                }
 
-		                // 1) Read the final confirmation before file transfer
-		                mainDone = (String) inStream.readUTF();
-		                if(mainDone.equals(OK)) {
-		                    // receiveFiles internally calls readInt() for numFiles 
-		                    // and readUTF() for the receiver name.
+		                // 3) Ler confirmação final antes do envio real
+		                mainDone = inStream.readUTF();
+		                if (mainDone.equals(OK)) {
+		                    // O receiveFiles já trata internamente o resto
 		                    receiveFiles(inStream, outStream, "../servidor/");
 		                }
 		                break;

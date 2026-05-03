@@ -227,13 +227,16 @@ public class mySaude {
 	            }
 
 	            filesToSend = client.encryptFiles(value, client.receiver);
-	            
+
+            	System.out.println("Encrypted");
 	            if (filesToSend.isEmpty()) {
 	                System.out.println("No files to send.");
 	                break;
 	            }
+            	System.out.println("OKtoSEND");
 	            client.objOut.writeUTF(OK);
 
+            	System.out.println("OKtoSEND");
 	            client.sendFiles(filesToSend, client.receiver);
 	            break;
 
@@ -253,9 +256,13 @@ public class mySaude {
 		        client.sendFiles(filesToSend, client.receiver);
 		        break;
 	        case "-rv":
-	            String filesToVerify  = client.receiveFiles(value);
+	            String filesToVerify = client.receiveFiles(value);
+	            // Envia o OK para o servidor saber que os ficheiros chegaram e o cliente vai verificar
+	            client.objOut.writeUTF(OK); 
+	            client.objOut.flush();
 	            
 	            client.verifySignatures(filesToVerify, client.receiver);
+	            
 	            break;
 	        case "-ace":
 	        	client.signEncryptSend(value, client.receiver);
@@ -1004,10 +1011,41 @@ public class mySaude {
 	    StringBuilder filesToSend = new StringBuilder();
 
         // 0) quantos existem
-        client.objOut.writeInt(paths.length);
+	    
+	    // Validar primeiro se os ficheiros existem antes de falar com o servidor
+	    for (String p : paths) {
+	        if (!new File(p.trim()).exists()) {
+	             System.out.println("Ficheiro não encontrado: " + p);
+	             client.objOut.writeInt(-1); // Envia -1 para sinalizar erro ao servidor
+	             client.objOut.flush();
+	             return;
+	        }
+	    }
+
+	    client.objOut.writeInt(paths.length);
+	    client.objOut.flush();
         System.out.println(paths +  "FILES TO SEND");
 	    for (String path : paths) {
-	        String trimmedPath = path.trim();
+	    	String trimmedPath = path.trim();
+	        
+	        // --- verficiar se existe cert ou nao ---
+	        try {
+	            KeyStore ksTemp = KeyStore.getInstance("PKCS12");
+	            try (FileInputStream fis = new FileInputStream("../keystore/keystore." + this.username)) {
+	                ksTemp.load(fis, this.password.toCharArray());
+	            }
+	            
+	            // Se não temos o certificado, pedimos ao servidor
+	            if (ksTemp.getCertificate(targetUser) == null) {
+	                client.objOut.writeUTF("GET_CERT");
+	            } else {
+	                client.objOut.writeUTF(OK);
+	            }
+	            client.objOut.flush();
+	        } catch (Exception e) {
+	            client.objOut.writeUTF(OK); // Fallback para não quebrar o servidor
+	            client.objOut.flush();
+	        }
 	        
 	        // 1) assinar
 	        String signedResult = client.signFiles(trimmedPath);
