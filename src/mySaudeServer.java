@@ -298,14 +298,13 @@ public class mySaudeServer{
 	            	socket.close();
 	                return; 
 	            }
+	            String hasCert;
+	            String mainDone;
 	            switch (option) {
 
-		            case "-e":
-		            case "-c":
-		            case "-v":
-		            case "-ce":
+	            	case "-ce":
 		            	System.out.println("A");
-			            String hasCert = (String) inStream.readUTF();
+			            hasCert = (String) inStream.readUTF();
 		            	System.out.println("A");
 			            if(hasCert.equals("GET_CERT")) {
 			            	sendCert(inStream, outStream);
@@ -318,6 +317,9 @@ public class mySaudeServer{
 			            }
 		            	System.out.println("A");
 			            break;
+		            case "-e":
+		            case "-c":
+		            case "-v":
 		            	
 		            case "-ae":
 		            case "-ace":
@@ -327,6 +329,22 @@ public class mySaudeServer{
 		            case "-r":
 		            case "-rd":
 		            case "-rv":
+		                sendFiles(inStream, outStream, "../servidor/");
+		                mainDone = (String) inStream.readUTF();
+		            	System.out.println("A");
+			            if(mainDone.equals(OK)) {
+			            	System.out.println("A");
+				            hasCert = (String) inStream.readUTF();
+			            	System.out.println("A");
+			            	if(hasCert.equals("GET_CERT")) {
+				            	sendCert(inStream, outStream);
+				            }
+			            }
+		            	System.out.println("A");
+			            
+			            
+			            break;
+		            	
 		            case "-rdv":
 		                sendFiles(inStream, outStream, "../servidor/");
 		                break;

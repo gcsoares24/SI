@@ -76,7 +76,10 @@ public class mySaude {
 	private static final Set<String> NEEDS_SERVER = Set.of(
 	    "-e", "-r", "-ce", "-rd", "-ae", "-rv", "-ace", "-rdv", "GET_CERT"
 	);
-
+	private static final Set<String> MAY_NEED_SERVER = Set.of(
+		    "-v", "-c"
+		);
+	
 	private static String isOption(String currentFlag, String fallback) {
 	    if (OPTIONS.contains(currentFlag)) {
 	        return currentFlag;
@@ -240,7 +243,11 @@ public class mySaude {
 	            break;
 	        case "-ae":
 	        	filesToSend = client.signFiles(value);
-		    	
+	        	if (filesToSend.isEmpty()) {
+	                System.out.println("No files to send.");
+	                break;
+	            }
+	            client.objOut.writeUTF(OK);
 		        client.sendFiles(filesToSend, client.receiver);
 		        break;
 	        case "-rv":
@@ -285,7 +292,12 @@ public class mySaude {
 
 	            i++; // skip value
 	        } else {
-	            flags.put(currentFlag, flags.get(currentFlag) + ";" + arg);
+	        	try {
+		            flags.put(currentFlag, flags.get(currentFlag) + ";" + arg);
+	        	}catch(Exception e) {
+	    	        throw new IllegalArgumentException("No server.", e);
+	        		
+	        	}
 	        }
 	    }
 
@@ -328,7 +340,7 @@ public class mySaude {
 
             client.startClient(flags.get("-s").split(":"));
         	client.address = flags.get("-s").split(":");
-        }else {
+        }else if(MAY_NEED_SERVER.contains(option)) {
         	client.address = flags.get("-s").split(":");
         }
 
@@ -742,7 +754,7 @@ public class mySaude {
 	            cert = receiveCert(ks);
 	            
 	        }else {
-	            client.objOut.writeObject(OK);
+	            client.objOut.writeUTF(OK);
 	            client.objOut.flush();
 	        	
 	        }
@@ -924,13 +936,19 @@ public class mySaude {
 	            System.out.println("FIXING...: Getting cert from server......");
 	            cert = receiveCert(ks);
 	            
+	        }else {
+	            client.objOut.writeUTF(OK);
+	            client.objOut.flush();
+	        	
 	        }
 			PublicKey publicKey = cert.getPublicKey();
 
 			for (String path : paths) {
+				System.out.println(path);
 				File inputFile = new File(path.trim());
 				File sigFile = new File(path.trim().replace(".assinado", "") + ".assinatura." + targetUser);
-
+				System.out.println(inputFile);
+				System.out.println(sigFile);
 				if (!inputFile.exists() || !sigFile.exists()) {
 					System.err.println("ERROR: The File or the Signature was not found (" + path.trim() + ")");
 					continue;
