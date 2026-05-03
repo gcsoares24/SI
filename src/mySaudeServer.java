@@ -291,7 +291,9 @@ public class mySaudeServer{
 	            ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream());
 	           	            
 
+	            System.out.println("want the option");
 	            String option = (String) inStream.readObject();
+	            System.out.println("The option for this conn is:" + option);
 	            if (!autenticarUtilizador(inStream, outStream, option)) {
 	            	socket.close();
 	                return; 

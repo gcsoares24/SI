@@ -19,6 +19,7 @@ import java.io.ObjectOutputStream;
 import java.net.ConnectException;
 
 import java.net.Socket;
+import java.net.SocketException;
 
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
@@ -73,7 +74,7 @@ public class mySaude {
 	);
 
 	private static final Set<String> NEEDS_SERVER = Set.of(
-	    "-e", "-r",  "-ce", "-rd", "-ae", "-rv", "-ace", "-rdv", "GET_CERT"
+	    "-e", "-r", "-ce", "-rd", "-ae", "-rv", "-ace", "-rdv", "GET_CERT"
 	);
 
 	private static String isOption(String currentFlag, String fallback) {
@@ -96,7 +97,7 @@ public class mySaude {
 	
 	public static mySaude client = new mySaude();
 	
-	private static void login(String option) throws IOException, ClassNotFoundException {
+	private static boolean login(String option) throws IOException, ClassNotFoundException {
 		if (NEEDS_SERVER.contains(option) ) {
             if (client.objOut == null) {
                 throw new IllegalArgumentException("The option " + option + " requires connection to the server (-s).");
@@ -115,9 +116,10 @@ public class mySaude {
             String res = (String) client.objIn.readObject();
             if (!res.equals("OK")) {
                 System.out.println("Acesso Negado pelo Servidor: " + res);
-                return; // Aborta a operação se não houver permissão ou login falhar
+                return false; // Aborta a operação se não houver permissão ou login falhar
             }
         }
+		return true;
 	}
 	public static void main(String[] args) throws IllegalArgumentException{
 
@@ -136,11 +138,16 @@ public class mySaude {
             validateRequiredFlags(option);
             
             //sends only server type of operation
-            login(option);
+            if(!login(option)) {
+            	throw new IllegalArgumentException("LOGIN ERROR... SHUTTING DOWN..");
+            }
             
             switchCase(option, flags.get(option));
-	 
-	    }catch(Exception e){
+            
+	    }catch(SocketException e){
+        	System.out.println("\n\n LOGIN ERROR... SHUTTING DOWN...");
+        	return;
+     }catch(Exception e){
 	        	System.out.println("\n\nIt seems like your option has an ERROR:\n\n" + e.getMessage());
 	        	return;
 	     } finally {
@@ -175,7 +182,7 @@ public class mySaude {
 	    }
 	}
 	
-    private static void switchCase(String option, String value) throws EOFException {
+    private static void switchCase(String option, String value) throws EOFException, ConnectException {
     	String filesToSend;
     	switch (option) {
 	        // 2A. Transferência de Ficheiros
@@ -319,6 +326,7 @@ public class mySaude {
             }
 
             client.startClient(flags.get("-s").split(":"));
+        	client.address = flags.get("-s").split(":");
         }else {
         	client.address = flags.get("-s").split(":");
         }
@@ -629,9 +637,11 @@ public class mySaude {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+	    
 	    }
 	    
 		try {
+			
 			login("GET_CERT");
 
             client.objOut.writeUTF(client.receiver);
