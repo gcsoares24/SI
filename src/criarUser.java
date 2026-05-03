@@ -43,7 +43,30 @@ public class criarUser {
 	    new SecureRandom().nextBytes(salt);
 	    return salt;
 	}
-	
+
+	/**
+	 * Método auxiliar para ler passwords de forma segura (sem eco no terminal)
+	 * Mantém compatibilidade com IDEs e terminais (WSL/Linux)
+	 */
+	private static String readPassword(String prompt) {
+		// Tenta usar a consola do sistema para esconder os carateres
+		if (System.console() != null) {
+			char[] passwordChars = System.console().readPassword(prompt);
+			return new String(passwordChars);
+		}
+
+		// Fallback para quando a consola não está disponível (ex: Eclipse, IntelliJ)
+		System.out.print(prompt);
+		try {
+			Scanner sc = new Scanner(System.in);
+			if (sc.hasNextLine()) {
+				return sc.nextLine();
+			}
+			return "";
+		} catch (Exception e) {
+			throw new RuntimeException("FATAL ERROR: Could not read password from input.", e);
+		}
+	}
 	public static byte[] hashPassword(String password, byte[] salt) throws Exception {
 	    MessageDigest md = MessageDigest.getInstance("SHA-256");
 	    md.update(salt);
@@ -120,9 +143,8 @@ public class criarUser {
 	public static void main(String[] args) throws Exception{
 		try {
             // --- INÍCIO DA ALÍNEA B (Pedir e Validar MAC) ---
-			Scanner sc = new Scanner(System.in);
-			System.out.print("system> Introduza a password do MAC do servidor: ");
-			String macPassword = sc.nextLine();
+			
+			String macPassword = readPassword("server> Enter MAC password to start: ");
 
 			// Verifica a integridade antes de fazer o que quer que seja
 			if (new File("../servidor/users.txt").exists()) {
@@ -146,8 +168,9 @@ public class criarUser {
 			    System.out.println("system> Cert read with success!");
 
 			    // 2. Lógica da KeyStore
+			    char[] ksPassword = readPassword("server> Define a the keyStore password to start: ").toCharArray();
+
 			    java.security.KeyStore ks = java.security.KeyStore.getInstance("PKCS12");
-			    char[] ksPassword = "123456".toCharArray(); // Define uma pass para a KS
 			    String ksPath = userFile; 
 			    System.out.println(flags);
 

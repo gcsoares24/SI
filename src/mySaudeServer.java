@@ -13,6 +13,7 @@ import java.io.BufferedReader;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
@@ -51,6 +52,7 @@ public class mySaudeServer{
 	private int port;
     public ObjectOutputStream objOut;
     public ObjectInputStream objIn;
+    public static char[] userKeyStorePass;
 
 	// MAC Logic Variables
 	public static String macPassword; 
@@ -95,7 +97,7 @@ public class mySaudeServer{
 	    return System.getProperty("user.home")
 	            + File.separator + "mySaude";	            
 	}
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, KeyStoreException {
 		System.out.println("server: main");
 		mySaudeServer server = new mySaudeServer();
 		
@@ -141,12 +143,60 @@ public class mySaudeServer{
 	    }
 		
 		String keyStorePassword = readPassword("server> Enter server keystore password: ");
-
+		try (FileInputStream fis = new FileInputStream(trustStoreFile)) {
+	        KeyStore ks = KeyStore.getInstance("PKCS12");
+	        ks.load(fis, keyStorePassword.toCharArray());
+	    } catch (IOException e) {
+	        // Catch the specific wrong password error
+	        if (e.getMessage() != null && e.getMessage().toLowerCase().contains("password was incorrect")) {
+	            throw new IllegalArgumentException("ERRO: The inserted password was incorrect! Try again.");
+	        } else {
+	            throw new IllegalArgumentException("ERRO: It was not possible to read the truststore. Verify if the file is really a PKCS12.", e);
+	        }
+	    } catch (Exception e) {
+	        throw new RuntimeException("ERRO: Unkown error while trying to acess truststore: " + e.getMessage(), e);
+	    }
 	    System.setProperty("javax.net.ssl.keyStore", trustStoreFile.getAbsolutePath());
 		System.setProperty("javax.net.ssl.keyStorePassword", keyStorePassword);
 		System.setProperty("javax.net.ssl.keyStoreType", "PKCS12");
+
+		
+		
+		//3. pedir a password do keystore dos users
+
+		userKeyStorePass = readPassword("server> Enter user keystore.users password: ").toCharArray();
+		// testar a passe
+	    KeyStore ks = KeyStore.getInstance("PKCS12");
+	    File ksFile;
+        ksFile = new File(PATH_KEYSTORE + "keystore.users");
+	    
+	    
+        try (FileInputStream ksfis = new FileInputStream(ksFile)) {
+
+		    char[] ksPassword = mySaudeServer.userKeyStorePass; // Define uma pass para a KS
+            ks.load(ksfis, ksPassword);
+		    
+        }catch(FileNotFoundException e) {
+            System.err.println("keystore.users doesnt exist..!!");
+            System.exit(-1); 
+		}catch(IOException e) {
+
+            System.err.println("Keystore password was incorrect!!");
+            System.exit(-1); 
+		} catch (NoSuchAlgorithmException e) {
+
+            System.err.println("Keystore passwo1rd was incorrect!!");
+            System.exit(-1); 
+		} catch (CertificateException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 		server.startServer();
+		
+		
+		
+
 	}
 
 	/**
@@ -318,7 +368,6 @@ public class mySaudeServer{
 		            	System.out.println("A");
 			            break;
 		            case "-e":
-		            case "-c":
 		            case "-v":
 		            	
 		            case "-ae":
@@ -433,8 +482,8 @@ public class mySaudeServer{
 	    			return;
 	    		}else{
 			        try (FileInputStream ksfis = new FileInputStream(ksFile)) {
-					    
-					    char[] ksPassword = "123456".toCharArray(); // Define uma pass para a KS
+
+					    char[] ksPassword = mySaudeServer.userKeyStorePass; // Define uma pass para a KS
 			            ks.load(ksfis, ksPassword);
 					    
 			        } catch (NoSuchAlgorithmException e) {

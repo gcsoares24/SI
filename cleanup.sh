@@ -23,10 +23,13 @@ echo "--- Registering users on server ---"
 # and userX.cer was generated in the keystore folder
 cd ~/mySaude/src
 
-# Create user1 (medico)
-echo "123456" | java criarUser user1 medico user11 -f ../keystore/user1.cer
 
-# Create user2 (utente)
-echo "123456" | java criarUser user2 utente user22 -f ../keystore/user2.cer
+echo "--- Registering users on server ---"
+cd ~/mySaude/src
+
+# O comando <<EOF envia as linhas seguintes como input para o Java
+java criarUser user1 medico user11 -f ../keystore/user1.cer
+
+java criarUser user2 utente user22 -f ../keystore/user2.cer
 
 echo "--- Setup Complete! ---"

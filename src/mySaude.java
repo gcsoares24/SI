@@ -124,6 +124,8 @@ public class mySaude {
         }
 		return true;
 	}
+	
+	
 	public static void main(String[] args) throws IllegalArgumentException{
 
 		try {
@@ -353,10 +355,9 @@ public class mySaude {
 	}
 
 	private static void configureClientTLS() {
-		String trustStorePath = getBasePath() + File.separator + "keystore" + File.separator + "truststore.client";
+	    String trustStorePath = getBasePath() + File.separator + "keystore" + File.separator + "truststore.client";
 
 	    File trustStoreFile = new File(trustStorePath);
-
 
 	    if (!trustStoreFile.exists()) {
 	        throw new IllegalArgumentException(
@@ -367,6 +368,25 @@ public class mySaude {
 
 	    String trustStorePassword = readPassword("Password da truststore do cliente: ");
 
+	    // ==========================================
+	    // PROACTIVE PASSWORD & FORMAT CHECK
+	    // ==========================================
+	    try (FileInputStream fis = new FileInputStream(trustStoreFile)) {
+	        KeyStore ks = KeyStore.getInstance("PKCS12");
+	        ks.load(fis, trustStorePassword.toCharArray());
+	    } catch (IOException e) {
+	        // Catch the specific wrong password error
+	        if (e.getMessage() != null && e.getMessage().toLowerCase().contains("password was incorrect")) {
+	            throw new IllegalArgumentException("ERRO: The inserted password was incorrect! Try again.");
+	        } else {
+	            throw new IllegalArgumentException("ERRO: It was not possible to read the truststore. Verify if the file is really a PKCS12.", e);
+	        }
+	    } catch (Exception e) {
+	        throw new RuntimeException("ERRO: Unkown error while trying to acess truststore: " + e.getMessage(), e);
+	    }
+	    // ==========================================
+
+	    // If we reach this line, the password is 100% correct
 	    System.setProperty("javax.net.ssl.trustStore", trustStoreFile.getAbsolutePath());
 	    System.setProperty("javax.net.ssl.trustStorePassword", trustStorePassword);
 	    System.setProperty("javax.net.ssl.trustStoreType", "PKCS12");
@@ -640,6 +660,7 @@ public class mySaude {
 	        return null;
 	    }
 	}
+	
 	public Certificate receiveCert(KeyStore ks) throws NoSuchAlgorithmException, CertificateException, ClassNotFoundException, IOException {
 		
 	    if (client.sock == null || client.objOut == null || client.objIn == null) {
@@ -652,7 +673,7 @@ public class mySaude {
 			}
 	        login("GET_CERT");
 	    }else {
-	    	 // Enviar Opção
+	    	// Enviar Opção
             client.objOut.writeUTF("GET_CERT");
             client.objOut.flush();
 
@@ -753,10 +774,6 @@ public class mySaude {
 	            System.out.println("FIXING...: Getting cert from server......");
 	            cert = receiveCert(ks);
 	            
-	        }else {
-	            client.objOut.writeUTF(OK);
-	            client.objOut.flush();
-	        	
 	        }
 	        PublicKey publicKey = cert.getPublicKey();
 
@@ -936,7 +953,7 @@ public class mySaude {
 	            System.out.println("FIXING...: Getting cert from server......");
 	            cert = receiveCert(ks);
 	            
-	        }else {
+	        }else if(cert != null && client.objOut != null) {
 	            client.objOut.writeUTF(OK);
 	            client.objOut.flush();
 	        	
