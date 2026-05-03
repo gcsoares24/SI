@@ -225,7 +225,7 @@ public class mySaude {
 	            }
 
 	            filesToSend = client.encryptFiles(value, client.receiver);
-
+	            
 	            if (filesToSend.isEmpty()) {
 	                System.out.println("No files to send.");
 	                break;
@@ -982,13 +982,16 @@ public class mySaude {
 		}
 	}
 	
-	public void signEncryptSend(String filePaths, String targetUser) {
+	public void signEncryptSend(String filePaths, String targetUser) throws IOException {
 	    String[] paths = filePaths.split(";");
 	    StringBuilder filesToSend = new StringBuilder();
 
+        // 0) quantos existem
+        client.objOut.writeInt(paths.length);
+        System.out.println(paths +  "FILES TO SEND");
 	    for (String path : paths) {
 	        String trimmedPath = path.trim();
-
+	        
 	        // 1) assinar
 	        String signedResult = client.signFiles(trimmedPath);
 	        if (signedResult == null || signedResult.isEmpty()) {
@@ -1025,9 +1028,12 @@ public class mySaude {
 
 	    if (filesToSend.length() == 0) {
 	        System.out.println("No file to send.");
+	        client.objOut.writeUTF("NO");
 	        return;
 	    }
+        System.out.println("Sending.");
 
+        client.objOut.writeUTF(OK);
 	    client.sendFiles(filesToSend.toString(), targetUser);
 	}
 	

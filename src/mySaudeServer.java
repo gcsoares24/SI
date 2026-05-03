@@ -322,12 +322,35 @@ public class mySaudeServer{
 		            case "-v":
 		            	
 		            case "-ae":
-		            case "-ace":
 		                receiveFiles(inStream, outStream, "../servidor/");
 		                break;
-	
+		            case "-ace":
+		                // 0) Read how many files are being processed (to know how many certs to check)
+		                int qnt = inStream.readInt(); 
+		                System.out.println("Processing " + qnt + " file sets.");
+
+		                if(qnt > 0) {
+		                    // FIX: condition must be i < qnt
+		                    for(int i = 0; i < qnt; i++) {
+		                        String certStatus = inStream.readUTF(); // Reads "OK" or "GET_CERT"
+		                        if(certStatus.equals("GET_CERT")) {
+		                            sendCert(inStream, outStream);
+		                        }
+		                    }
+		                }
+
+		                // 1) Read the final confirmation before file transfer
+		                mainDone = (String) inStream.readUTF();
+		                if(mainDone.equals(OK)) {
+		                    // receiveFiles internally calls readInt() for numFiles 
+		                    // and readUTF() for the receiver name.
+		                    receiveFiles(inStream, outStream, "../servidor/");
+		                }
+		                break;
 		            case "-r":
 		            case "-rd":
+		                sendFiles(inStream, outStream, "../servidor/");
+		                break;
 		            case "-rv":
 		                sendFiles(inStream, outStream, "../servidor/");
 		                mainDone = (String) inStream.readUTF();
@@ -347,6 +370,19 @@ public class mySaudeServer{
 		            	
 		            case "-rdv":
 		                sendFiles(inStream, outStream, "../servidor/");
+		                mainDone = (String) inStream.readUTF();
+		            	System.out.println("A");
+			            if(mainDone.equals(OK)) {
+			            	System.out.println("A");
+				            hasCert = (String) inStream.readUTF();
+			            	System.out.println("A");
+			            	if(hasCert.equals("GET_CERT")) {
+				            	sendCert(inStream, outStream);
+				            }
+			            }
+		            	System.out.println("A");
+			            
+			            
 		                break;
 		            case "GET_CERT":
 		            	sendCert(inStream, outStream);
@@ -602,8 +638,8 @@ public class mySaudeServer{
 	                		System.out.println(destPath);
 	                	}else if(!fileName.contains(".chave")){
 		                	destPath += ".assinado";
-		                	previousWasSignature = false;
 	                	}
+	                	previousWasSignature = false;
 	                	//meter isto aqui eu acho: previousWasSignature = false;
 	                }
 	                
