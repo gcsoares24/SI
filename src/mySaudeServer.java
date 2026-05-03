@@ -369,20 +369,22 @@ public class mySaudeServer{
 			            break;
 		            	
 		            case "-rdv":
+		                // 1. Send the requested files to client
 		                sendFiles(inStream, outStream, "../servidor/");
-		                mainDone = (String) inStream.readUTF();
-		            	System.out.println("A");
-			            if(mainDone.equals(OK)) {
-			            	System.out.println("A");
-				            hasCert = (String) inStream.readUTF();
-			            	System.out.println("A");
-			            	if(hasCert.equals("GET_CERT")) {
-				            	sendCert(inStream, outStream);
-				            }
-			            }
-		            	System.out.println("A");
-			            
-			            
+		                
+		                // 2. Wait for client to say OK (meaning they received files and want to verify)
+		                try {
+		                    mainDone = (String) inStream.readUTF();
+		                    if(mainDone.equals(OK)) {
+		                        // 3. Client's verifySignatures will now send "OK" or "GET_CERT"
+		                        hasCert = (String) inStream.readUTF();
+		                        if(hasCert.equals("GET_CERT")) {
+		                            sendCert(inStream, outStream);
+		                        }
+		                    }
+		                } catch (EOFException e) {
+		                    System.out.println("Client finished early.");
+		                }
 		                break;
 		            case "GET_CERT":
 		            	sendCert(inStream, outStream);

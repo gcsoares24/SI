@@ -1037,45 +1037,44 @@ public class mySaude {
 	    client.sendFiles(filesToSend.toString(), targetUser);
 	}
 	
-	public void receiveDecryptVerify(String filePaths, String signedUser) {
+	public void receiveDecryptVerify(String filePaths, String signedUser) throws IOException {
 	    String[] originalFiles = filePaths.split(";");
 	    StringBuilder filesToRequest = new StringBuilder();
 
+	    // ... (Your loop to build filesToRequest remains the same) ...
 	    for (String file : originalFiles) {
 	        String base = file.trim();
-
-	        if (filesToRequest.length() > 0) {
-	            filesToRequest.append(";");
-	        }
-
-	        filesToRequest.append(base).append(".envelope")
-	                      .append(";")
-	                      .append(base).append(".chave.").append(this.username)
-	                      .append(";")
+	        if (filesToRequest.length() > 0) filesToRequest.append(";");
+	        filesToRequest.append(base).append(".envelope").append(";")
+	                      .append(base).append(".chave.").append(this.username).append(";")
 	                      .append(base).append(".assinatura.").append(signedUser);
 	    }
 
+	    // 1) Receive the files from server
 	    String received = client.receiveFiles(filesToRequest.toString());
 
 	    if (received == null || received.isEmpty()) {
-	        System.out.println("No file to send.");
+	        client.objOut.writeUTF("NO"); // Tell server we aren't proceeding to cert check
+	        client.objOut.flush();
 	        return;
 	    }
+
+	    // 2) The Handshake your server is waiting for:
+	    client.objOut.writeUTF(OK); 
+	    client.objOut.flush();
+
+	    // 3) Decrypt locally
 	    client.decryptFiles(received);
 
+	    // 4) Verify Signatures logic
+	    // verifySignatures internally handles the "OK" vs "GET_CERT" logic
+	    // Make sure verifySignatures sends the UTF "GET_CERT" if it needs it!
 	    StringBuilder filesToVerify = new StringBuilder();
 	    String[] receivedPaths = received.split(";");
-
 	    for (String path : receivedPaths) {
-	        String trimmed = path.trim();
-
-	        if (trimmed.endsWith(".envelope")) {
-	            String originalFile = trimmed.replace(".envelope", "");
-
-	            if (filesToVerify.length() > 0) {
-	                filesToVerify.append(";");
-	            }
-	            filesToVerify.append(originalFile);
+	        if (path.trim().endsWith(".envelope")) {
+	            if (filesToVerify.length() > 0) filesToVerify.append(";");
+	            filesToVerify.append(path.trim().replace(".envelope", ""));
 	        }
 	    }
 
