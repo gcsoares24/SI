@@ -162,6 +162,38 @@ public class criarUser {
 			
 			//C.
 			try (FileInputStream fis = new FileInputStream(flags.get("certFile"))) {
+
+			    // A. Confidencialidade de passwords - gerar o user.txt
+			    File usersDir = new File("../servidor/users.txt");
+
+			    if (!usersDir.exists()) {
+			        System.out.println("system> users.txt doesn't exist, creating users.txt...");
+			        try {
+			            usersDir.createNewFile();
+			        } catch (IOException e) {
+			            throw new IOException("Failed to create users.txt");
+			        }
+			    }
+			    if (userExists(usersDir, flags.get("username"))) {
+			        throw new IllegalArgumentException("User already exists in users.txt");
+			    }
+			    
+		        byte[] salt = generateSalt();
+		        byte[] hash = hashPassword(flags.get("password"), salt);
+
+		        String saltBase64 = Base64.getEncoder().encodeToString(salt);
+		        String hashBase64 = Base64.getEncoder().encodeToString(hash);
+
+		        try (FileWriter writer = new FileWriter(usersDir, true)) {
+		            writer.write(
+		                flags.get("username") + ":" +
+		                flags.get("function") + ":" +
+		                saltBase64 + ":" +
+		                hashBase64 + "\n"
+		            );
+		        }
+	            System.out.println("system> user inserted into users.txt");
+
 			    // 1. Ler o certificado 
 			    CertificateFactory cf = CertificateFactory.getInstance("X.509");
 			    Certificate cert = cf.generateCertificate(fis);
@@ -219,37 +251,6 @@ public class criarUser {
 			}
 			
 
-
-		    // A. Confidencialidade de passwords - gerar o user.txt
-		    File usersDir = new File("../servidor/users.txt");
-
-		    if (!usersDir.exists()) {
-		        System.out.println("system> users.txt doesn't exist, creating users.txt...");
-		        try {
-		            usersDir.createNewFile();
-		        } catch (IOException e) {
-		            throw new IOException("Failed to create users.txt");
-		        }
-		    }
-		    if (userExists(usersDir, flags.get("username"))) {
-		        throw new IllegalArgumentException("User already exists in users.txt");
-		    }
-		    
-	        byte[] salt = generateSalt();
-	        byte[] hash = hashPassword(flags.get("password"), salt);
-
-	        String saltBase64 = Base64.getEncoder().encodeToString(salt);
-	        String hashBase64 = Base64.getEncoder().encodeToString(hash);
-
-	        try (FileWriter writer = new FileWriter(usersDir, true)) {
-	            writer.write(
-	                flags.get("username") + ":" +
-	                flags.get("function") + ":" +
-	                saltBase64 + ":" +
-	                hashBase64 + "\n"
-	            );
-	        }
-            System.out.println("system> user inserted into users.txt");
 
             // --- INÍCIO DA ALÍNEA B (Atualizar MAC) ---
             atualizarMac(macPassword); 
