@@ -1,4 +1,4 @@
-# SI
+
 ### CRIAR USERS
 java criarUser user1 medico user11 -f user1.cer
 java criarUser user2 utente user22 -f user2.cer
@@ -35,7 +35,7 @@ java mySaude -s localhost:12345 -u user2 -p user22 -t user1 -v "/home/guimbreon/
 java mySaude -s localhost:12345 -u user1 -p user11 -t user2 -ae "/home/guimbreon/mySaude/eu/exame1.pdf" "/home/guimbreon/mySaude/eu/proj1_enunciado.pdf"
 
 
-java mySaude -s localhost:12345 -u user2 -p user22 -rv -t user1 exame1.pdf.assinado exame1.pdf.assinatura.user1 proj1_enunciado.pdf.assinado proj1_enunciado.pdf.assinatura.user1
+java mySaude -s localhost:12345 -u user2 -p user22 -t user1 -rv  exame1.pdf.assinado exame1.pdf.assinatura.user1 proj1_enunciado.pdf.assinado proj1_enunciado.pdf.assinatura.user1
 
 
 ### ASSINAR, CIFRAR e ENVIAR & RECEBER, DECIFRAR e VALIDAR
@@ -49,7 +49,3 @@ EM -RV e -RD devia de só meter tipo proj1_enunciado.pdf, sem ter de meter tudo.
 ## Notes Project
 
 - [ ] Verificar novamente o erro do 1º projeto, de nao conseguir rodar varios ficheiros na parte do .envelope
-
-
-
-___
