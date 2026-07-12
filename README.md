@@ -1,56 +1,58 @@
-# mySaude — Sistema Seguro de Gestão de Relatórios Médicos
+# mySaude — Secure Medical Report Management System
+(Existe este README também em [Português](README_PT.md))
 
-Este repositório contém o projeto prático desenvolvido no âmbito da unidade curricular de **Segurança Informática** na **Faculdade de Ciências da Universidade de Lisboa (FCUL)**. O projeto obteve a classificação de **19 valores** e foca-se na implementação de um sistema cliente-servidor seguro em Java para a gestão, transferência e validação de relatórios médicos eletrónicos (eID, assinaturas digitais e PKI).
 
----
-
-## 🔒 Contexto Técnico e Funcionalidades
-
-O objetivo do **mySaude** é garantir os pilares fundamentais da segurança da informação — **Confidencialidade, Integridade, Autenticação e Não-Repúdio** — num cenário de comunicação médica crítica através de redes não confiáveis.
-
-### Principais Funcionalidades:
-*   **Comunicação Cliente-Servidor Segura:** Implementação de sockets TCP em Java com proteção criptográfica.
-*   **Autenticação forte via eID & Certificados:** Autenticação mútua e validação baseada em Infraestrutura de Chaves Públicas (PKI) com certificados digitais X.509.
-*   **Gestão de Identidades (Keystores):** Repositórios de chaves seguros (`KeyStore` Java) configurados individualmente por utilizador/servidor.
-*   **Criptografia e Assinatura Digital:** Proteção e integridade de documentos médicos sigilosos (exames, relatórios em PDF) e garantias de não-repúdio nas transações.
-*   **Concorrência no Servidor:** Processamento multi-threaded (`ServerThread`) para suportar múltiplos clientes em simultâneo de forma isolada e segura.
+This repository contains the practical project developed for the **Information Security** (Segurança Informática) course at the **Faculty of Sciences of the University of Lisbon (FCUL)**. The project achieved a final grade of **19/20** and focuses on implementing a secure Java-based client-server system for managing, transferring, and validating electronic medical reports (utilizing eID, digital signatures, and PKI).
 
 ---
 
-## 📁 Estrutura do Repositório
+## 🔒 Technical Context & Features
+
+The core objective of **mySaude** is to guarantee the fundamental pillars of information security — **Confidentiality, Integrity, Authentication, and Non-Repudiation** — in a critical medical communication environment over untrusted networks.
+
+### Key Features:
+*   **Secure Client-Server Communication:** Implementation of Java TCP sockets wrapped with cryptographic protection layers.
+*   **Strong Authentication via eID & Certificates:** Mutual authentication and validation built on a Public Key Infrastructure (PKI) with X.509 digital certificates.
+*   **Identity Management (Keystores):** Secure key repositories (Java `KeyStore`) configured individually for each user and server thread.
+*   **Encryption and Digital Signatures:** Comprehensive protection and integrity checks for confidential medical documents (e.g., PDF exams/reports) ensuring non-repudiation during data transmittal.
+*   **Server Concurrency:** Multi-threaded architecture (`ServerThread`) capable of securely isolating and handling multiple clients concurrently.
+
+---
+
+## 📁 Repository Structure
 
 ```text
-├── src/                          # Código-fonte Java do projeto
-│   ├── mySaude.java              # Aplicação Cliente
-│   ├── mySaudeServer.java        # Aplicação Servidor Principal
+├── src/                          # Java project source code
+│   ├── mySaude.java              # Client Application
+│   ├── mySaudeServer.java        # Main Server Application
 │   └── mySaudeServer$ServerThread.class
-├── keystore/                     # Infraestrutura de chaves e certificados
-│   ├── create_keystore.sh        # Script automatizado para geração de chaves e CSR
-│   ├── importar_certs.sh         # Script para importação e confiança mútua de certificados
-│   ├── keystore.user1 / user2    # Armazéns de chaves privados dos utilizadores
-│   └── user1.cer / user2.cer     # Certificados digitais públicos exportados
-├── eu/                           # Diretório local do utilizador (Simulação)
-│   ├── exame1.pdf / exame2.pdf   # Relatórios médicos de teste
-│   └── teste.txt                 # Ficheiro de validação de ambiente
-└── bin/                          # Ficheiros binários compilados (.class)
+├── keystore/                     # Security keys and certificates infrastructure
+│   ├── create_keystore.sh        # Automated script for key pairs and CSR generation
+│   ├── importar_certs.sh         # Script to import and establish mutual trust between entities
+│   ├── keystore.user1 / user2    # Users' private cryptographic key stores
+│   └── user1.cer / user2.cer     # Exported public digital certificates
+├── eu/                           # User local mock directory
+│   ├── exame1.pdf / exame2.pdf   # Mock medical reports for testing
+│   └── teste.txt                 # Environment validation file
+└── bin/                          # Compiled binary classes (.class)
 ```
 
 ---
 
-## 🛠️ Instalação e Configuração da Infraestrutura de Segurança
+## 🛠️ Installation & Security Infrastructure Configuration
 
-Antes de executar as aplicações, é necessário gerar o par de chaves assimétricas e configurar a confiança entre as entidades utilizando os utilitários da pasta `keystore/`.
+Before running the applications, you must generate the asymmetric key pairs and configure mutual trust between the entities using the utilities within the `keystore/` directory.
 
-### 1. Gerar Chaves e Parâmetros Criptográficos
-Execute o script de criação das keystores para inicializar as identidades criptográficas:
+### 1. Generate Cryptographic Keys and Parameters
+Run the keystore creation script to initialize the cryptographic identities:
 ```bash
 cd keystore
 chmod +x create_keystore.sh
 ./create_keystore.sh
 ```
 
-### 2. Configurar a Confiança Mútua (Importar Certificados)
-Para que o cliente e o servidor confiem nos certificados um do outro, execute o script de importação:
+### 2. Establish Mutual Trust (Import Certificates)
+To enable the client and server to verify and trust each other's certificates, execute the import tool:
 ```bash
 chmod +x importar_certs.sh
 ./importar_certs.sh
@@ -58,33 +60,33 @@ chmod +x importar_certs.sh
 
 ---
 
-## 🚀 Como Executar o Projeto
+## 🚀 How to Run the Project
 
-Com as chaves configuradas, compile e corra a aplicação a partir da raiz do projeto:
+Once the infrastructure keys are configured, compile and execute the system from the root directory:
 
-### Passo 1: Compilar o Código
+### Step 1: Compile the Source Code
 ```bash
 javac src/mySaudeServer.java src/mySaude.java -d bin/
 ```
 
-### Passo 2: Iniciar o Servidor Seguro
-O servidor ficará à escuta de ligações seguras inbound, gerando uma thread isolada para cada sessão:
+### Step 2: Launch the Secure Server
+The server will listen for inbound secure socket connections and spin up an isolated execution thread for each session:
 ```bash
 java -cp bin mySaudeServer
 ```
 
-### Passo 3: Executar o Cliente
-Inicie a consola do utilizador para interagir com o sistema de gestão de exames:
+### Step 3: Run the Client Application
+Launch the interactive command-line interface for the user session:
 ```bash
 java -cp bin mySaude
 ```
 
 ---
 
-## 📝 Tecnologias Utilizadas
-*   **Linguagem Principal:** Java (Java Security API, Java Cryptography Architecture - JCA)
-*   **Segurança e Infraestrutura:** Java KeyStore (JKS), Criptografia Assimétrica, Certificados Digitais X.509
-*   **Automação:** Shell Scripting (Bash) para gestão de PKI local
+## 📝 Technologies Used
+*   **Core Language:** Java (Java Security API, Java Cryptography Architecture - JCA)
+*   **Security & Infrastructure:** Java KeyStore (JKS), Asymmetric Encryption, X.509 Digital Certificates
+*   **Automation:** Shell Scripting (Bash) for local PKI orchestration
 
 ---
-*Projeto desenvolvido por Guilherme Soares no âmbito da Licenciatura em Tecnologias de Informação (FCUL).*
+*Project developed by Guilherme Soares as part of the BSc in Information Technology program (FCUL).*
